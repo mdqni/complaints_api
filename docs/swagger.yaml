@@ -1,0 +1,362 @@
+basePath: /complaint
+definitions:
+  categoriesCreate.Request:
+    properties:
+      answer:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      title:
+        type: string
+    required:
+    - answer
+    - description
+    - id
+    - title
+    type: object
+  create.Request:
+    properties:
+      categoryId:
+        type: integer
+      message:
+        type: string
+      user_uuid:
+        type: string
+    required:
+    - categoryId
+    - message
+    type: object
+  domain.Category:
+    properties:
+      answer:
+        type: string
+      description:
+        description: Detailed description of the category
+        type: string
+      id:
+        type: integer
+      title:
+        type: string
+    type: object
+  domain.Complaint:
+    properties:
+      answer:
+        type: string
+      category_id:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      message:
+        type: string
+      status:
+        description: active, resolved, or rejected
+        type: string
+      updated_at:
+        type: string
+      user_uuid:
+        type: string
+    type: object
+  resolveComplaint.Request:
+    properties:
+      answer:
+        type: string
+      status:
+        type: string
+    required:
+    - answer
+    - status
+    type: object
+  response.Response:
+    properties:
+      error:
+        type: string
+      status:
+        description: Error, Ok
+        type: string
+    type: object
+host: localhost:8082
+info:
+  contact:
+    email: quanaimadi@.gmail.com
+    name: API Support
+  description: This is a server for managing complaints and categories.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: Complaint Server API
+  version: "1.0"
+paths:
+  /categories:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех категорий жалоб.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Category'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/response.Response'
+      tags:
+      - Categories
+  /categories/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет категорию жалоб по переданному идентификатору.
+      parameters:
+      - description: ID категории
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Неверный запрос (не указан ID)
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Категория не найдена
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/response.Response'
+      tags:
+      - Categories
+  /category:
+    post:
+      consumes:
+      - application/json
+      description: Создает новую категорию жалоб.
+      parameters:
+      - description: Данные категории
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/categoriesCreate.Request'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Ошибка валидации или декодирования
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/response.Response'
+      tags:
+      - Categories
+  /complaint:
+    get:
+      description: Retrieve all complaints from the database
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of complaints
+          schema:
+            items:
+              $ref: '#/definitions/domain.Complaint'
+            type: array
+        "404":
+          description: No complaints found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get all complaints
+      tags:
+      - Complaints
+    post:
+      consumes:
+      - application/json
+      description: Create a new complaint for a specific user and category
+      parameters:
+      - description: Complaint details
+        in: body
+        name: Request
+        required: true
+        schema:
+          $ref: '#/definitions/create.Request'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Response with complaint ID
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "429":
+          description: Limit of one complaint per hour exceeded
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Create a new complaint
+      tags:
+      - Complaints
+  /complaint/{id}:
+    delete:
+      description: Delete a complaint by its ID
+      parameters:
+      - description: Complaint ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Complaint successfully deleted
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Complaint not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Delete a complaint
+      tags:
+      - Complaints
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a complaint using its unique identifier
+      parameters:
+      - description: Complaint ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Complaint details
+          schema:
+            $ref: '#/definitions/domain.Complaint'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Complaint not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get a complaint by ID
+      tags:
+      - Complaints
+  /complaints/{id}/resolve_complaint:
+    put:
+      consumes:
+      - application/json
+      description: Update the status of a complaint (approve or reject) with an answer
+      parameters:
+      - description: Complaint ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Complaint resolution details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/resolveComplaint.Request'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Complaint status updated successfully
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Complaint not found
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Resolve a complaint
+      tags:
+      - Complaints
+  /complaints/category/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all complaints that belong to a specific category
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of complaints
+          schema:
+            items:
+              $ref: '#/definitions/domain.Complaint'
+            type: array
+        "400":
+          description: Invalid category ID
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Get complaints by category ID
+      tags:
+      - Complaints
+swagger: "2.0"
