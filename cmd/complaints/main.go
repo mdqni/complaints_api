@@ -140,17 +140,17 @@ func startServer(cfg *config.Config, router chi.Router, log *slog.Logger) {
 }
 
 func setupLogger(env string) *slog.Logger {
-	var log *slog.Logger
-
+	defaultLogger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	switch env {
 	case envLocal:
-		log = setupPrettySlog()
+		return setupPrettySlog()
 	case envDev:
-		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	case envProd:
-		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+		return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	default:
+		return defaultLogger
 	}
-	return log
 }
 
 func setupPrettySlog() *slog.Logger {

@@ -45,7 +45,8 @@ func New(log *slog.Logger, categoryCreator CategoriesCreator) http.HandlerFunc {
 		var req Request
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
-			log.Error("failed to decode request body", sl.Err(err))       //Пишем в лог
+			log.Error("failed to decode request body", sl.Err(err)) //Пишем в лог
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, response.Error("failed to decode request")) //Возвращаем ошибку
 			return
 		}
@@ -54,7 +55,7 @@ func New(log *slog.Logger, categoryCreator CategoriesCreator) http.HandlerFunc {
 			var validationErrors validator.ValidationErrors
 			errors.As(err, &validationErrors)
 			log.Error("failed to validate request", sl.Err(err))
-
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, response.ValidationError(validationErrors))
 			return
 		}
@@ -66,6 +67,7 @@ func New(log *slog.Logger, categoryCreator CategoriesCreator) http.HandlerFunc {
 		categoryID, err := categoryCreator.CreateCategory(domain.Category{ID: categoryId, Title: categoryName, Description: description, Answer: answer})
 		if err != nil {
 			log.Error("failed to save category", sl.Err(err))
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("failed to save complaints"))
 		}
 		log.Info("category saved on "+strconv.Itoa(int(categoryID))+" ID", slog.Int64("id", categoryID))
@@ -73,6 +75,7 @@ func New(log *slog.Logger, categoryCreator CategoriesCreator) http.HandlerFunc {
 	}
 }
 func ResponseOK(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 	render.JSON(w, r, http_server.Response{
 		Response: response.OK(),
 	})

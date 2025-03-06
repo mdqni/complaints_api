@@ -42,7 +42,8 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		var req Request
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
-			log.Error("failed to decode request body", sl.Err(err))       //Пишем в лог
+			log.Error("failed to decode request body", sl.Err(err)) //Пишем в лог
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, response.Error("failed to decode request")) //Возвращаем ошибку
 			return
 		}
@@ -51,7 +52,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			var validationErrors validator.ValidationErrors
 			errors.As(err, &validationErrors)
 			log.Error("failed to validate request", sl.Err(err))
-
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, response.ValidationError(validationErrors))
 			return
 		}
@@ -61,11 +62,13 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		answer, err := service.CreateComplaint(userUUID, categoryID, message)
 		if errors.Is(err, storage.ErrLimitOneComplaintInOneHour) {
 			log.Error("failed to create complaints", sl.Err(err))
+			w.WriteHeader(http.StatusTooManyRequests)
 			render.JSON(w, r, response.Error("You can only submit one complaint per hour. Please try again later."))
 			return
 		}
 		if err != nil {
 			log.Error("failed to create complaints", sl.Err(err))
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("failed to save complaints"))
 		}
 		render.JSON(w, r, map[string]interface{}{

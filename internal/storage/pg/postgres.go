@@ -21,6 +21,10 @@ func New(connString string) (*Storage, error) {
 	}
 
 	// Создание таблиц
+	initSchema := `SET search_path TO public;`
+	if _, err := pool.Exec(context.Background(), initSchema); err != nil {
+		return nil, fmt.Errorf("%s: failed to set search path: %w", op, err)
+	}
 	tables := []string{
 		`CREATE TABLE IF NOT EXISTS categories (
 			id SERIAL PRIMARY KEY,
@@ -30,7 +34,7 @@ func New(connString string) (*Storage, error) {
 		);`,
 		`CREATE TABLE IF NOT EXISTS users (
 			id SERIAL PRIMARY KEY,
-			user_id TEXT NOT NULL UNIQUE,
+			uuid TEXT NOT NULL UNIQUE,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);`,
 		`CREATE TABLE IF NOT EXISTS complaints (
@@ -38,7 +42,7 @@ func New(connString string) (*Storage, error) {
 			user_uuid TEXT NOT NULL,
 			category_id INTEGER NOT NULL,
 			message TEXT NOT NULL,
-			status TEXT NOT NULL DEFAULT 'active',
+			status TEXT NOT NULL DEFAULT 'pending',
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			answer TEXT,

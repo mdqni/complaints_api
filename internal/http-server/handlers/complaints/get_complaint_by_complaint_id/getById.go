@@ -27,7 +27,7 @@ import (
 // @Router /complaint/{id} [get]
 func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.complaint.get_all.New"
+		const op = "handlers.complaint.get_by_complaint_id.New"
 		log := log.With(
 			slog.String("op", op),
 			slog.String("url", r.URL.String()))

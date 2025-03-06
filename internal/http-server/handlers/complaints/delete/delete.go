@@ -37,7 +37,7 @@ func New(log *slog.Logger, deleteComplaint ComplaintDeleter) http.HandlerFunc {
 		id := chi.URLParam(r, "id")
 		if id == "" {
 			log.Info("id can not be empty")
-
+			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, response.Error("invalid request"))
 
 			return
@@ -49,11 +49,13 @@ func New(log *slog.Logger, deleteComplaint ComplaintDeleter) http.HandlerFunc {
 		err = deleteComplaint.DeleteComplaint(atoi)
 		if errors.Is(err, storage.ErrComplaintNotFound) {
 			log.Error("complaint not found", sl.Err(err))
-			render.JSON(w, r, response.Error("category not found"))
+			w.WriteHeader(http.StatusBadRequest)
+			render.JSON(w, r, response.Error("complaint not found"))
 			return
 		}
 		if err != nil {
 			log.Info("failed to delete complaint", sl.Err(err))
+			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("internal error"))
 			return
 		}
