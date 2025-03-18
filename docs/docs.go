@@ -372,7 +372,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/complaints/{id}/resolve_complaint": {
+        "/complaints/{id}/update_complaint_status": {
             "put": {
                 "description": "Update the status of a complaint (approve or reject) with an answer",
                 "consumes": [

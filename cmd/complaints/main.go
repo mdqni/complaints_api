@@ -10,7 +10,8 @@ import (
 	"complaint_server/internal/http-server/handlers/complaints/get_all"
 	"complaint_server/internal/http-server/handlers/complaints/get_complaint_by_complaint_id"
 	"complaint_server/internal/http-server/handlers/complaints/get_complaints_by_category_id"
-	"complaint_server/internal/http-server/handlers/complaints/resolve_complaint"
+	"complaint_server/internal/http-server/handlers/complaints/update_complaint_status"
+	"complaint_server/internal/http-server/middleware/admin_only"
 	mwLogger "complaint_server/internal/http-server/middleware/logger"
 	"complaint_server/internal/lib/logger/handlers/slogpretty"
 	"complaint_server/internal/lib/logger/sl"
@@ -55,7 +56,7 @@ func main() {
 	log.Debug("Debug message are enabled")
 
 	storage := setupStorage(cfg.ConnString, log)
-	router := setupRouter(log, cfg, storage)
+	router := setupRouter(log, storage)
 
 	startServer(cfg, router, log)
 }
@@ -68,7 +69,7 @@ func setupStorage(connString string, log *slog.Logger) *pg.Storage {
 	return storage
 }
 
-func setupRouter(log *slog.Logger, cfg *config.Config, storage *pg.Storage) chi.Router {
+func setupRouter(log *slog.Logger, storage *pg.Storage) chi.Router {
 	router := chi.NewRouter()
 
 	// Middleware
@@ -76,11 +77,11 @@ func setupRouter(log *slog.Logger, cfg *config.Config, storage *pg.Storage) chi.
 	router.Use(mwLogger.New(log))
 
 	// Routes
-	setupRoutes(cfg, router, log, storage)
+	setupRoutes(router, log, storage)
 	return router
 }
 
-func setupRoutes(cfg *config.Config, router chi.Router, log *slog.Logger, storage *pg.Storage) {
+func setupRoutes(router chi.Router, log *slog.Logger, storage *pg.Storage) {
 	complaintService := service.New(storage)
 	router.Route("/complaint", func(r chi.Router) {
 		r.Post("/", create.New(log, complaintService))                           //Создать компл
@@ -92,9 +93,8 @@ func setupRoutes(cfg *config.Config, router chi.Router, log *slog.Logger, storag
 		r.Get("/{id}", get_complaints_by_category_id.New(log, complaintService)) //Получить компл по категории айди
 	})
 	router.Route("/admin", func(r chi.Router) {
-		r.Use(middleware.BasicAuth("admin", map[string]string{
-			cfg.HTTPServer.User: cfg.HTTPServer.Password,
-		}))
+		r.Use(admin_only.AdminOnlyMiddleware)
+		log.Info("Admin Only started")
 		r.Get("/docs/*", httpSwagger.WrapHandler)
 		//Complaint
 		r.Put("/complaint/{id}/status", resolveComplaint.New(log, complaintService))

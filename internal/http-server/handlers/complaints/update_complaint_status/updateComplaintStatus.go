@@ -20,7 +20,7 @@ type Request struct {
 	Answer string `json:"answer" validate:"required"`
 }
 
-// New ResolveComplaint godoc
+// New UpdateComplaintStatus godoc
 // @Summary Resolve a complaint
 // @Description Update the status of a complaint (approve or reject) with an answer
 // @Tags Complaints
@@ -32,7 +32,7 @@ type Request struct {
 // @Failure 400 {object} response.Response "Invalid request"
 // @Failure 404 {object} response.Response "Complaint not found"
 // @Failure 500 {object} response.Response "Internal server error"
-// @Router /complaints/{id}/resolve_complaint [put]
+// @Router /complaints/{id}/update_complaint_status [put]
 func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.update.New"
