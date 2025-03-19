@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "complaint_server/docs"
 	"complaint_server/internal/config"
 	categoriesCreate "complaint_server/internal/http-server/handlers/category/create"
 	deleteCategoryById "complaint_server/internal/http-server/handlers/category/delete"
@@ -18,6 +19,7 @@ import (
 	"complaint_server/internal/service"
 	"complaint_server/internal/storage/pg"
 	"context"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
@@ -93,10 +95,10 @@ func setupRoutes(cfg *config.Config, router chi.Router, log *slog.Logger, storag
 		r.Get("/{id}", get_complaints_by_category_id.New(log, complaintService)) //Получить компл по категории айди
 	})
 	router.Route("/docs", func(r chi.Router) {
-		r.Use(middleware.BasicAuth("admin", map[string]string{
+		r.Use(middleware.BasicAuth("docs", map[string]string{
 			cfg.HTTPServer.User: cfg.HTTPServer.Password,
 		}))
-		r.Get("/*", httpSwagger.WrapHandler)
+		r.Get("/swagger/*", httpSwagger.WrapHandler)
 	})
 
 	router.Route("/admin", func(r chi.Router) {
@@ -125,7 +127,7 @@ func startServer(cfg *config.Config, router chi.Router, log *slog.Logger) {
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("server error", sl.Err(err))
 		}
 	}()

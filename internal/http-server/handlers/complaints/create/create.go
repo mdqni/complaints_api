@@ -27,7 +27,14 @@ type Request struct {
 // @Accept json
 // @Produce json
 // @Param Request body Request true "Complaint details"
-// @Success 200 {object} map[string]interface{} "Response with complaint ID"
+//
+//	@Success 200 {object} map[string]interface{}{
+//				"status": http.StatusOK,
+//				"data": map[string]interface{}{
+//					"answer": answer,
+//				},
+//			} "Response with complaint ID"
+//
 // @Failure 400 {object} response.Response "Invalid request"
 // @Failure 429 {object} response.Response "Limit of one complaint per hour exceeded"
 // @Failure 500 {object} response.Response "Internal server error"
