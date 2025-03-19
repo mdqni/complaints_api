@@ -22,7 +22,7 @@ type Request struct {
 
 // New UpdateComplaintStatus godoc
 // @Summary Resolve a complaint
-// @Description Update the status of a complaint (approve or reject) with an answer
+// @Description Update the status of a complaint ("approved" or "rejected") with an answer
 // @Tags Complaints
 // @Accept json
 // @Produce json

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strings"
 
 	_ "github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
@@ -11,12 +12,17 @@ import (
 
 func AdminOnlyMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenString := r.Header.Get("Authorization")
-		if tokenString == "" {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
 			http.Error(w, "Missing token", http.StatusUnauthorized)
 			return
 		}
 
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == authHeader {
+			http.Error(w, "Invalid token format", http.StatusUnauthorized)
+			return
+		}
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			return []byte("a-string-secret-at-least-256-bits-long"), nil
 		})

@@ -44,7 +44,7 @@ const (
 // @license.name	MIT
 // @license.url	https://opensource.org/licenses/MIT
 // @host			localhost:8082
-// @BasePath		/complaint
+// @BasePath		/
 func main() {
 	//Init Logger
 	cfg := config.MustLoad()
@@ -56,7 +56,7 @@ func main() {
 	log.Debug("Debug message are enabled")
 
 	storage := setupStorage(cfg.ConnString, log)
-	router := setupRouter(log, storage)
+	router := setupRouter(log, cfg, storage)
 
 	startServer(cfg, router, log)
 }
@@ -69,7 +69,7 @@ func setupStorage(connString string, log *slog.Logger) *pg.Storage {
 	return storage
 }
 
-func setupRouter(log *slog.Logger, storage *pg.Storage) chi.Router {
+func setupRouter(log *slog.Logger, cfg *config.Config, storage *pg.Storage) chi.Router {
 	router := chi.NewRouter()
 
 	// Middleware
@@ -77,11 +77,11 @@ func setupRouter(log *slog.Logger, storage *pg.Storage) chi.Router {
 	router.Use(mwLogger.New(log))
 
 	// Routes
-	setupRoutes(router, log, storage)
+	setupRoutes(cfg, router, log, storage)
 	return router
 }
 
-func setupRoutes(router chi.Router, log *slog.Logger, storage *pg.Storage) {
+func setupRoutes(cfg *config.Config, router chi.Router, log *slog.Logger, storage *pg.Storage) {
 	complaintService := service.New(storage)
 	router.Route("/complaint", func(r chi.Router) {
 		r.Post("/", create.New(log, complaintService))                           //Создать компл
@@ -92,10 +92,15 @@ func setupRoutes(router chi.Router, log *slog.Logger, storage *pg.Storage) {
 		r.Get("/", categoriesGetAll.New(log, storage))                           //Удаление категории
 		r.Get("/{id}", get_complaints_by_category_id.New(log, complaintService)) //Получить компл по категории айди
 	})
+	router.Route("/docs", func(r chi.Router) {
+		r.Use(middleware.BasicAuth("admin", map[string]string{
+			cfg.HTTPServer.User: cfg.HTTPServer.Password,
+		}))
+		r.Get("/*", httpSwagger.WrapHandler)
+	})
+
 	router.Route("/admin", func(r chi.Router) {
 		r.Use(admin_only.AdminOnlyMiddleware)
-		log.Info("Admin Only started")
-		r.Get("/docs/*", httpSwagger.WrapHandler)
 		//Complaint
 		r.Put("/complaint/{id}/status", resolveComplaint.New(log, complaintService))
 		r.Delete("/complaint/{id}", deleteComplaint.New(log, complaintService)) //Удалить компл

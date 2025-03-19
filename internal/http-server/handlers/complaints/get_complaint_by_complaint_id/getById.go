@@ -24,7 +24,7 @@ import (
 // @Failure 400 {object} response.Response "Invalid request"
 // @Failure 404 {object} response.Response "Complaint not found"
 // @Failure 500 {object} response.Response "Internal server error"
-// @Router /complaint/{id} [get]
+// @Router /{id} [get]
 func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.get_by_complaint_id.New"

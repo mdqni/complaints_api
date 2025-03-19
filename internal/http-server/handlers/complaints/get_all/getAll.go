@@ -1,10 +1,10 @@
 package get_all
 
 import (
-	_ "complaint_server/docs"
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
 	"complaint_server/internal/service"
+	_ "database/sql"
 	"github.com/go-chi/render"
 	_ "github.com/swaggo/http-swagger"
 	"log/slog"
