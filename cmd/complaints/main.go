@@ -98,7 +98,7 @@ func setupRoutes(cfg *config.Config, router chi.Router, log *slog.Logger, storag
 		r.Use(middleware.BasicAuth("docs", map[string]string{
 			cfg.HTTPServer.User: cfg.HTTPServer.Password,
 		}))
-		r.Get("/swagger/*", httpSwagger.WrapHandler)
+		r.Get("/*", httpSwagger.WrapHandler)
 	})
 
 	router.Route("/admin", func(r chi.Router) {
