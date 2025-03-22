@@ -3,23 +3,20 @@ package response
 import (
 	"fmt"
 	"github.com/go-playground/validator/v10"
+	"strings"
 )
 
 type Response struct {
-	Status string `json:"status"` //Error, Ok
-	Error  string `json:"error,omitempty"`
+	Status  int               `json:"status"` //Message, Ok
+	Message string            `json:"error,omitempty"`
+	Errors  map[string]string `json:"errors,omitempty"`
 }
-
-const (
-	StatusOK    = "OK"
-	StatusError = "Error"
-)
 
 func OK() Response {
-	return Response{Status: StatusOK}
+	return Response{Status: 200}
 }
-func Error(msg string) Response {
-	return Response{Status: StatusError, Error: msg}
+func Error(msg string, status int) Response {
+	return Response{Status: status, Message: msg}
 }
 func ValidationError(err validator.ValidationErrors) Response {
 	var errorMsgs []string
@@ -34,6 +31,7 @@ func ValidationError(err validator.ValidationErrors) Response {
 
 	}
 	return Response{
-		Status: StatusError,
+		Status:  400,
+		Message: strings.Join(errorMsgs, ", "),
 	}
 }

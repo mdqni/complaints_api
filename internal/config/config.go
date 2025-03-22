@@ -24,11 +24,11 @@ type HTTPServer struct {
 func MustLoad() *Config {
 	defaultConfigPath := "./config/local.yaml"
 	if err := os.Setenv("CONFIG_PATH", defaultConfigPath); err != nil {
-		fmt.Println("Error setting environment variable:", err)
+		fmt.Println("Message setting environment variable:", err)
 		return nil
 	}
 	if err := os.Setenv("CGO_ENABLED", "1"); err != nil {
-		fmt.Println("Error setting environment variable:", err)
+		fmt.Println("Message setting environment variable:", err)
 		return nil
 	}
 	configPath := os.Getenv("CONFIG_PATH")

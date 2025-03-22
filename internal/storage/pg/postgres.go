@@ -12,19 +12,15 @@ type Storage struct {
 }
 
 // New открывает соединение с БД и создаёт таблицы, если их нет.
-func New(connString string) (*Storage, error) {
+func New(ctx context.Context, connString string) (*Storage, error) {
 	const op = "storage.postgres.New"
 
-	pool, err := pgxpool.New(context.Background(), connString)
+	pool, err := pgxpool.New(ctx, connString)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to connect to database: %w", op, err)
 	}
 
 	// Создание таблиц
-	initSchema := `SET search_path TO public;`
-	if _, err := pool.Exec(context.Background(), initSchema); err != nil {
-		return nil, fmt.Errorf("%s: failed to set search path: %w", op, err)
-	}
 	tables := []string{
 		`CREATE TABLE IF NOT EXISTS categories (
 			id SERIAL PRIMARY KEY,
@@ -38,20 +34,22 @@ func New(connString string) (*Storage, error) {
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);`,
 		`CREATE TABLE IF NOT EXISTS complaints (
-			id SERIAL PRIMARY KEY,
-			user_uuid TEXT NOT NULL,
-			category_id INTEGER NOT NULL,
-			message TEXT NOT NULL,
-			status TEXT NOT NULL DEFAULT 'pending',
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			answer TEXT,
-			FOREIGN KEY (category_id) REFERENCES categories(id)
-		);`,
+    id SERIAL PRIMARY KEY,
+    user_uuid TEXT NOT NULL,
+    category_id INTEGER NOT NULL,
+    message TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    answer TEXT,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_uuid) REFERENCES users(uuid) ON DELETE CASCADE
+);`,
 	}
 
 	for _, table := range tables {
-		if _, err := pool.Exec(context.Background(), table); err != nil {
+		if _, err := pool.Exec(ctx, table); err != nil {
+			pool.Close() // ✅ Закрываем соединение при ошибке
 			return nil, fmt.Errorf("%s: failed to create tables: %w", op, err)
 		}
 	}

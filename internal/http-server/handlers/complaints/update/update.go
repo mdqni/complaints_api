@@ -1,4 +1,4 @@
-package resolveComplaint
+package update
 
 import (
 	"complaint_server/internal/domain"
@@ -11,27 +11,24 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 type Request struct {
-	Status string `json:"status" validate:"required"`
-	Answer string `json:"answer" validate:"required"`
+	complaint domain.Complaint
 }
 
-// New UpdateComplaintStatus godoc
-// @Summary Resolve a complaint
-// @Description Update the status of a complaint ("approved" or "rejected") with an answer
+// New UpdateComplaint godoc
+// @Summary Update a complaint
+// @Description Update a complaint
 // @Tags Complaints
 // @Accept json
 // @Produce json
-// @Param id path int true "Complaint ID"
 // @Param request body Request true "Complaint resolution details"
-// @Success 200 {object} response.Response "Complaint status updated successfully"
+// @Success 200 {object} response.Response "Complaint updated successfully"
 // @Failure 400 {object} response.Response "Invalid request"
 // @Failure 404 {object} response.Response "Complaint not found"
 // @Failure 500 {object} response.Response "Internal server error"
-// @Router /complaints/{id}/status [put]
+// @Router /complaints/{id} [put]
 func New(log *slog.Logger, service *complaintService.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.update.New"
@@ -40,7 +37,7 @@ func New(log *slog.Logger, service *complaintService.ComplaintService) http.Hand
 
 		log = log.With(
 			slog.String("op", op),
-			slog.String("request_id", middleware.GetReqID(r.Context())),
+			slog.String("request_id", middleware.GetReqID(ctx)),
 		)
 
 		// Get complaint ID from URL parameters
@@ -62,32 +59,20 @@ func New(log *slog.Logger, service *complaintService.ComplaintService) http.Hand
 		}
 		log.Info("request body decoded", slog.Any("request", req))
 
-		var status domain.ComplaintStatus
-		switch strings.ToLower(req.Status) {
-		case "approved":
-			status = domain.StatusApproved
-		case "rejected":
-			status = domain.StatusRejected
-		default:
-			log.Error("invalid status", slog.String("status", req.Status))
-			render.JSON(w, r, response.Error("invalid status", http.StatusBadRequest))
-			return
-		}
-		answer := req.Answer
-
-		// Update the complaint status
-		err = service.UpdateComplaintStatus(ctx, id, status, answer)
+		// Update the complaint
+		err = service.UpdateComplaint(ctx, id, req.complaint)
 		if err != nil {
 			log.Error("failed to update complaint status", sl.Err(err))
 			render.JSON(w, r, response.Error("failed to update complaint status", http.StatusInternalServerError))
 			return
 		}
 
-		log.Info("complaint status updated", slog.Int64("id", id), slog.String("status", string(status)))
+		log.Info("complaint updated", slog.Int64("id", id))
 
 		// Send success response
 		render.JSON(w, r, response.Response{
 			Status: http.StatusOK,
 		})
+		return
 	}
 }

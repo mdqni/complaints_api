@@ -3,7 +3,7 @@ package get_complaints_by_category_id
 import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
-	"complaint_server/internal/service"
+	"complaint_server/internal/service/complaintService"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"log/slog"
@@ -22,9 +22,10 @@ import (
 // @Failure 400 {object} response.Response "Invalid category ID"
 // @Failure 500 {object} response.Response "Internal server error"
 // @Router /complaints/category/{id} [get]
-func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
+func New(log *slog.Logger, service *complaintService.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaints.getByCategoryId.New"
+		ctx := r.Context()
 		log := log.With(
 			slog.String("op", op),
 			slog.String("url", r.URL.String()))
@@ -32,13 +33,13 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		categoryId, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
 			log.Error(op, sl.Err(err))
-			render.JSON(w, r, response.Error("invalid category id"))
+			render.JSON(w, r, response.Error("invalid category id", http.StatusBadRequest))
 		}
-		result, err := service.GetComplaintsByCategoryId(categoryId)
+		result, err := service.GetComplaintsByCategoryId(ctx, categoryId)
 
 		if err != nil {
 			log.Error(op, sl.Err(err))
-			render.JSON(w, r, response.Error("internal error"))
+			render.JSON(w, r, response.Error("internal error", http.StatusInternalServerError))
 			return
 		}
 		log.Info("Categories found")

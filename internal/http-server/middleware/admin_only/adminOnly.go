@@ -3,6 +3,7 @@ package admin_only
 import (
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -15,12 +16,14 @@ func AdminOnlyMiddleware(next http.Handler) http.Handler {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			http.Error(w, "Missing token", http.StatusUnauthorized)
+			slog.Error("Missing token")
 			return
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		if tokenString == authHeader {
 			http.Error(w, "Invalid token format", http.StatusUnauthorized)
+			slog.Error("Invalid token format")
 			return
 		}
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {

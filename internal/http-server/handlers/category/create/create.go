@@ -2,9 +2,10 @@ package categoriesCreate
 
 import (
 	"complaint_server/internal/domain"
-	http_server "complaint_server/internal/http-server"
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
+	"complaint_server/internal/service/categoryService"
+	"context"
 	"errors"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
@@ -22,7 +23,7 @@ type Request struct {
 }
 
 type CategoriesCreator interface {
-	CreateCategory(category domain.Category) (int64, error)
+	CreateCategory(ctx context.Context, category domain.Category) (int64, error)
 }
 
 // New @Summary      Создать категорию
@@ -35,9 +36,10 @@ type CategoriesCreator interface {
 // @Failure      400  {object}  response.Response  "Ошибка валидации или декодирования"
 // @Failure      500  {object}  response.Response  "Ошибка сервера"
 // @Router       /category [post]
-func New(log *slog.Logger, categoryCreator CategoriesCreator) http.HandlerFunc {
+func New(log *slog.Logger, service *categoryService.CategoryService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.category.create.New"
+		ctx := r.Context()
 		log = log.With(
 			slog.String("op", op),
 			slog.String("request_id", middleware.GetReqID(r.Context())),
@@ -47,7 +49,7 @@ func New(log *slog.Logger, categoryCreator CategoriesCreator) http.HandlerFunc {
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err)) //Пишем в лог
 			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.Error("failed to decode request")) //Возвращаем ошибку
+			render.JSON(w, r, response.Error("failed to decode request", http.StatusBadRequest)) //Возвращаем ошибку
 			return
 		}
 		log.Info("request body decoded", slog.Any("request", req))
@@ -64,11 +66,11 @@ func New(log *slog.Logger, categoryCreator CategoriesCreator) http.HandlerFunc {
 		categoryName := req.Title
 		answer := req.Answer
 
-		categoryID, err := categoryCreator.CreateCategory(domain.Category{ID: categoryId, Title: categoryName, Description: description, Answer: answer})
+		categoryID, err := service.CreateCategory(ctx, domain.Category{ID: categoryId, Title: categoryName, Description: description, Answer: answer})
 		if err != nil {
 			log.Error("failed to save category", sl.Err(err))
 			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("failed to save complaints"))
+			render.JSON(w, r, response.Error("failed to save complaints", http.StatusInternalServerError))
 		}
 		log.Info("category saved on "+strconv.Itoa(int(categoryID))+" ID", slog.Int64("id", categoryID))
 		ResponseOK(w, r)
@@ -76,7 +78,7 @@ func New(log *slog.Logger, categoryCreator CategoriesCreator) http.HandlerFunc {
 }
 func ResponseOK(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	render.JSON(w, r, http_server.Response{
-		Response: response.OK(),
+	render.JSON(w, r, response.Response{
+		Status: http.StatusOK,
 	})
 }

@@ -11,11 +11,11 @@ import (
 )
 
 // SaveComplaint сохраняет новую жалобу в базе данных.
-func (s *Storage) SaveComplaint(userUUID string, categoryID int, message string) (string, error) {
+func (s *Storage) SaveComplaint(ctx context.Context, userUUID string, categoryID int, message string) (string, error) {
 	// Сохраняем жалобу
 	query := `INSERT INTO complaints (user_uuid, category_id, message) VALUES ($1, $2, $3) RETURNING id`
 	var complaintID int
-	err := s.db.QueryRow(context.Background(), query, userUUID, categoryID, message).Scan(&complaintID)
+	err := s.db.QueryRow(ctx, query, userUUID, categoryID, message).Scan(&complaintID)
 	if err != nil {
 		return "", fmt.Errorf("failed to save complaint: %w", err)
 	}
@@ -31,20 +31,26 @@ func (s *Storage) SaveComplaint(userUUID string, categoryID int, message string)
 }
 
 // GetComplaintById возвращает жалобу по её ID.
-func (s *Storage) GetComplaintById(complaintID int) (domain.Complaint, error) {
+func (s *Storage) GetComplaintById(ctx context.Context, complaintID int) (domain.Complaint, error) {
 	const op = "storage.postgres.GetComplaintByID"
 
 	query := `
-		SELECT id, user_uuid, message, category_id, status, created_at, answer
-		FROM complaints
-		WHERE id = $1`
+		SELECT c.id, c.user_uuid, c.message, 
+		       cat.id, cat.title, cat.description, cat.answer, 
+		       c.status, c.created_at, c.answer
+		FROM complaints c
+		JOIN categories cat ON c.category_id = cat.id
+		WHERE c.id = $1`
 
 	var complaint domain.Complaint
-	err := s.db.QueryRow(context.Background(), query, complaintID).Scan(
+	err := s.db.QueryRow(ctx, query, complaintID).Scan(
 		&complaint.ID,
 		&complaint.UserUUID,
 		&complaint.Message,
-		&complaint.CategoryID,
+		&complaint.Category.ID,
+		&complaint.Category.Title,
+		&complaint.Category.Description,
+		&complaint.Category.Answer,
 		&complaint.Status,
 		&complaint.CreatedAt,
 		&complaint.Answer,
@@ -60,10 +66,17 @@ func (s *Storage) GetComplaintById(complaintID int) (domain.Complaint, error) {
 	return complaint, nil
 }
 
-func (s *Storage) GetComplaints() ([]domain.Complaint, error) {
+func (s *Storage) GetComplaints(ctx context.Context) ([]domain.Complaint, error) {
 	const op = "storage.postgres.GetComplaints"
 
-	rows, err := s.db.Query(context.Background(), "SELECT id, user_uuid, message, category_id, status, created_at, answer FROM complaints")
+	query := `
+		SELECT c.id, c.user_uuid, c.message, 
+		       cat.id, cat.title, cat.description, cat.answer, 
+		       c.status, c.created_at, c.answer
+		FROM complaints c
+		JOIN categories cat ON c.category_id = cat.id`
+
+	rows, err := s.db.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -76,7 +89,10 @@ func (s *Storage) GetComplaints() ([]domain.Complaint, error) {
 			&complaint.ID,
 			&complaint.UserUUID,
 			&complaint.Message,
-			&complaint.CategoryID,
+			&complaint.Category.ID,
+			&complaint.Category.Title,
+			&complaint.Category.Description,
+			&complaint.Category.Answer,
 			&complaint.Status,
 			&complaint.CreatedAt,
 			&complaint.Answer,
@@ -93,10 +109,10 @@ func (s *Storage) GetComplaints() ([]domain.Complaint, error) {
 	return complaints, nil
 }
 
-func (s *Storage) GetComplaintsByCategoryId(categoryId int) ([]domain.Complaint, error) {
+func (s *Storage) GetComplaintsByCategoryId(ctx context.Context, categoryId int) ([]domain.Complaint, error) {
 	const op = "storage.postgres.GetComplaintsByCategory"
 
-	rows, err := s.db.Query(context.Background(), "SELECT id, user_uuid, message, category_id, status, created_at FROM complaints WHERE category_id = $1", categoryId)
+	rows, err := s.db.Query(ctx, "SELECT id, user_uuid, message, category_id, status, created_at FROM complaints WHERE category_id = $1", categoryId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -109,7 +125,7 @@ func (s *Storage) GetComplaintsByCategoryId(categoryId int) ([]domain.Complaint,
 			&complaint.ID,
 			&complaint.UserUUID,
 			&complaint.Message,
-			&complaint.CategoryID,
+			&complaint.Category,
 			&complaint.Status,
 			&complaint.CreatedAt,
 			&complaint.Answer,
@@ -127,12 +143,12 @@ func (s *Storage) GetComplaintsByCategoryId(categoryId int) ([]domain.Complaint,
 }
 
 // UpdateComplaintStatus обновляет статус жалобы.
-func (s *Storage) UpdateComplaintStatus(complaintID int64, status domain.ComplaintStatus, answer string) error {
+func (s *Storage) UpdateComplaintStatus(ctx context.Context, complaintID int64, status domain.ComplaintStatus, answer string) error {
 	const op = "storage.postgres.UpdateComplaintStatus"
 
 	// Проверяем, существует ли жалоба с таким ID
 	var exists bool
-	err := s.db.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM complaints WHERE id = $1)", complaintID).Scan(&exists)
+	err := s.db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM complaints WHERE id = $1)", complaintID).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -148,7 +164,7 @@ func (s *Storage) UpdateComplaintStatus(complaintID int64, status domain.Complai
 		WHERE id = $2`
 
 	// Выполняем запрос на обновление
-	result, err := s.db.Exec(context.Background(), query, status, complaintID, answer)
+	result, err := s.db.Exec(ctx, query, status, complaintID, answer)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -165,12 +181,12 @@ func (s *Storage) UpdateComplaintStatus(complaintID int64, status domain.Complai
 }
 
 // CheckComplaintLimit проверяет временной лимит для отправки жалоб.
-func (s *Storage) CheckComplaintLimit(userUUID string) (bool, error) {
+func (s *Storage) CheckComplaintLimit(ctx context.Context, userUUID string) (bool, error) {
 	const op = "storage.postgres.CheckComplaintLimit"
 
 	// Получаем время последней жалобы от пользователя
 	var lastComplaintTime time.Time
-	err := s.db.QueryRow(context.Background(), `
+	err := s.db.QueryRow(ctx, `
 		SELECT created_at 
 		FROM complaints 
 		WHERE user_uuid = $1 
@@ -193,12 +209,50 @@ func (s *Storage) CheckComplaintLimit(userUUID string) (bool, error) {
 	return true, nil
 }
 
+// UpdateComplaint обновляет жалобу
+func (s *Storage) UpdateComplaint(ctx context.Context, complaintID int64, complaint domain.Complaint) error {
+	const op = "storage.postgres.UpdateComplaint"
+
+	// Проверяем, существует ли жалоба с таким ID
+	var exists bool
+	err := s.db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM complaints WHERE id = $1)", complaintID).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if !exists {
+		// Если жалоба с таким ID не найдена
+		return storage.ErrComplaintNotFound
+	}
+
+	// Выполняем обновление статуса
+	query := `
+		UPDATE complaints
+		SET id = $1, user_uuid = $2, category_id = $3, message = $4, status = $5, updated_at = CURRENT_TIMESTAMP, answer = $6
+		WHERE id = $7`
+
+	// Выполняем запрос на обновление
+	result, err := s.db.Exec(ctx, query, complaint.ID, complaint.UserUUID, complaint.Category.ID, complaint.Message, complaint.Status, complaint.Answer.String, complaintID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	// Проверяем, были ли обновлены строки
+	rowsAffected := result.RowsAffected()
+
+	// Если строки не обновлены, значит жалоба с таким ID не существует
+	if rowsAffected == 0 {
+		return storage.ErrComplaintNotFound
+	}
+
+	return nil
+}
+
 // DeleteComplaint удаляет жалобу по её ID.
-func (s *Storage) DeleteComplaint(id int) error {
+func (s *Storage) DeleteComplaint(ctx context.Context, id int) error {
 	const op = "storage.postgres.DeleteComplaint"
 
 	query := `DELETE FROM complaints WHERE id = $1`
-	_, err := s.db.Exec(context.Background(), query, id)
+	_, err := s.db.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
