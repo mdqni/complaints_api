@@ -4,6 +4,7 @@ import (
 	"complaint_server/internal/domain"
 	"complaint_server/internal/storage"
 	"complaint_server/internal/storage/pg"
+	"context"
 	"errors"
 	"fmt"
 )
@@ -87,6 +88,6 @@ func (s *ComplaintService) UpdateComplaintStatus(complaintID int64, status domai
 }
 
 // DeleteComplaint удаляет жалобу
-func (s *ComplaintService) DeleteComplaint(complaintID int) error {
-	return s.storage.DeleteComplaint(complaintID)
+func (s *ComplaintService) DeleteComplaint(ctx context.Context, complaintID int) error {
+	return s.storage.DeleteComplaint(ctx, complaintID)
 }

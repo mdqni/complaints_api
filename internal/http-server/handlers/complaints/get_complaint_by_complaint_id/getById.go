@@ -35,12 +35,12 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		result, err := service.GetComplaintById(id)
 		if errors.Is(err, storage.ErrComplaintNotFound) {
 			log.Error("complaint not found", sl.Err(err))
-			render.JSON(w, r, response.Error("complaint with this id not found"))
+			render.JSON(w, r, response.Error("complaint with this id not found", http.StatusNotFound))
 			return
 		}
 		if err != nil {
 			log.Error(op, sl.Err(err))
-			render.JSON(w, r, response.Error("internal error"))
+			render.JSON(w, r, response.Error("internal error", http.StatusInternalServerError))
 			return
 		}
 		log.Info("complaints found")

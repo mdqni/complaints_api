@@ -40,26 +40,26 @@ func New(log *slog.Logger, deleteCategory CategoryByIdDeleter) http.HandlerFunc 
 		if id == "" {
 			log.Info("id can not be empty")
 			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.Error("invalid request"))
+			render.JSON(w, r, response.Error("invalid request", http.StatusBadRequest))
 			return
 		}
 		atoi, err := strconv.Atoi(id)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("Internal Server Error"))
+			render.JSON(w, r, response.Error("Internal Server Error", http.StatusInternalServerError))
 			return
 		}
 		err = deleteCategory.DeleteCategoryById(nil, atoi)
 		if errors.Is(err, storage.ErrCategoryNotFound) {
 			log.Error("category not found", sl.Err(err))
 			w.WriteHeader(http.StatusNotFound)
-			render.JSON(w, r, response.Error("category not found"))
+			render.JSON(w, r, response.Error("category not found", http.StatusNotFound))
 			return
 		}
 		if err != nil {
 			log.Info("failed to delete category", sl.Err(err))
 			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("internal error"))
+			render.JSON(w, r, response.Error("internal error", http.StatusInternalServerError))
 			return
 		}
 		log.Info("category deleted")

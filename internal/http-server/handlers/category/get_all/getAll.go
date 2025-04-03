@@ -34,7 +34,7 @@ func New(log *slog.Logger, getCategories CategoriesGetter) http.HandlerFunc {
 		if err != nil {
 			log.Error(op, sl.Err(err))
 			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("internal error"))
+			render.JSON(w, r, response.Error("internal error", http.StatusInternalServerError))
 			return
 		}
 		log.Info("Categories found")

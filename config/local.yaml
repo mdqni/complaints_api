@@ -2,7 +2,7 @@ env: "local" #local, dev, prod
 cgo_enabled: "1"
 connString: "postgresql://postgres:postgres@localhost:5432/complaintDB"
 redis_client:
-  addr: 127.0.0.1:6379
+  addr: "127.0.0.1:6379"
   user: ""
   pass: ""
   db: 0

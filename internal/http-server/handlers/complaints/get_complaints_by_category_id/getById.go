@@ -32,13 +32,15 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		categoryId, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
 			log.Error(op, sl.Err(err))
-			render.JSON(w, r, response.Error("invalid category id"))
+			w.WriteHeader(http.StatusBadRequest)
+			render.JSON(w, r, response.Error("invalid category id", http.StatusBadRequest))
 		}
 		result, err := service.GetComplaintsByCategoryId(categoryId)
 
 		if err != nil {
 			log.Error(op, sl.Err(err))
-			render.JSON(w, r, response.Error("internal error"))
+			w.WriteHeader(http.StatusInternalServerError)
+			render.JSON(w, r, response.Error("internal error", http.StatusInternalServerError))
 			return
 		}
 		log.Info("Categories found")

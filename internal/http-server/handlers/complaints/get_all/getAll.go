@@ -37,7 +37,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		}
 		if err != nil {
 			log.Error(op, sl.Err(err))
-			render.JSON(w, r, response.Error("internal error"))
+			render.JSON(w, r, response.Error("internal error", http.StatusInternalServerError))
 			return
 		}
 		log.Info("complaints found")

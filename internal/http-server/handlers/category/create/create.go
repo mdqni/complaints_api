@@ -2,7 +2,6 @@ package categoriesCreate
 
 import (
 	"complaint_server/internal/domain"
-	http_server "complaint_server/internal/http-server"
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
 	service "complaint_server/internal/service/category"
@@ -46,7 +45,7 @@ func New(ctx context.Context, log *slog.Logger, service *service.CategoryService
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err)) //Пишем в лог
 			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.Error("failed to decode request")) //Возвращаем ошибку
+			render.JSON(w, r, response.Error("failed to decode request", http.StatusBadRequest)) //Возвращаем ошибку
 			return
 		}
 		log.Info("request body decoded", slog.Any("request", req))
@@ -66,15 +65,10 @@ func New(ctx context.Context, log *slog.Logger, service *service.CategoryService
 		if err != nil {
 			log.Error("failed to save category", sl.Err(err))
 			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("failed to save complaints"))
+			render.JSON(w, r, response.Error("failed to save complaints", http.StatusInternalServerError))
 		}
 		log.Info("category saved on "+strconv.Itoa(int(categoryID))+" ID", slog.Int64("id", categoryID))
-		ResponseOK(w, r)
+		w.WriteHeader(http.StatusOK)
+		render.JSON(w, r, response.Response{Status: http.StatusOK})
 	}
-}
-func ResponseOK(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	render.JSON(w, r, http_server.Response{
-		Response: response.OK(),
-	})
 }

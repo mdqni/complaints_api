@@ -233,11 +233,11 @@ func (s *Storage) CheckComplaintLimit(userUUID string) (bool, error) {
 }
 
 // DeleteComplaint удаляет жалобу по её ID.
-func (s *Storage) DeleteComplaint(id int) error {
+func (s *Storage) DeleteComplaint(ctx context.Context, id int) error {
 	const op = "storage.postgres.DeleteComplaint"
 
 	query := `DELETE FROM complaints WHERE id = $1`
-	_, err := s.db.Exec(context.Background(), query, id)
+	_, err := s.db.Exec(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}

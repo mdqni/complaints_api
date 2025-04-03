@@ -3,7 +3,7 @@ package deleteComplaint
 import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
-	"complaint_server/internal/service/complaintService"
+	"complaint_server/internal/service/complaint"
 	"complaint_server/internal/storage"
 	"errors"
 	"github.com/go-chi/chi/v5"
@@ -23,7 +23,7 @@ import (
 // @Failure 404 {object} response.Response "Complaint not found"
 // @Failure 500 {object} response.Response "Internal server error"
 // @Router /complaint/{id} [delete]
-func New(log *slog.Logger, service *complaintService.ComplaintService) http.HandlerFunc {
+func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.delete.New"
 

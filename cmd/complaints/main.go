@@ -113,10 +113,9 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 	_categoryService := categoryService.NewCategoriesService(storage)
 	_adminService := authService.NewAdminService(storage)
 	router.Route("/complaints", func(r chi.Router) {
-		r.Use(cache.CacheMiddleware(client, 2*time.Minute, log))
-		r.Post("/", create.New(log, _complaintService))                           //Создать компл
-		r.Get("/", get_all.New(log, _complaintService))                           //Получить все компл
-		r.Get("/{id}", get_complaint_by_complaint_id.New(log, _complaintService)) //Получить компл по айди
+		r.Post("/", create.New(log, _complaintService))                                                                                   //Создать компл
+		r.With(cache.CacheMiddleware(client, 5*time.Minute, log)).Get("/", get_all.New(log, _complaintService))                           // Получить все компл
+		r.With(cache.CacheMiddleware(client, 2*time.Minute, log)).Get("/{id}", get_complaint_by_complaint_id.New(log, _complaintService)) // Получить компл по айди
 	})
 	router.Route("/categories", func(r chi.Router) {
 		r.Get("/", categoriesGetAll.New(log, storage))                            //Удаление категории

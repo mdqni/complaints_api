@@ -2,7 +2,6 @@ package resolveComplaint
 
 import (
 	"complaint_server/internal/domain"
-	httpserver "complaint_server/internal/http-server"
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
 	"complaint_server/internal/service/complaint"
@@ -46,7 +45,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		id, err := strconv.ParseInt(complaintID, 10, 64)
 		if err != nil {
 			log.Error("invalid complaint ID", sl.Err(err))
-			render.JSON(w, r, response.Error("invalid complaint ID"))
+			render.JSON(w, r, response.Error("invalid complaint ID", http.StatusBadRequest))
 			return
 		}
 
@@ -55,7 +54,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		err = render.DecodeJSON(r.Body, &req)
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err))
-			render.JSON(w, r, response.Error("failed to decode request"))
+			render.JSON(w, r, response.Error("failed to decode request", http.StatusBadRequest))
 			return
 		}
 		log.Info("request body decoded", slog.Any("request", req))
@@ -68,7 +67,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			status = domain.StatusRejected
 		default:
 			log.Error("invalid status", slog.String("status", req.Status))
-			render.JSON(w, r, response.Error("invalid status"))
+			render.JSON(w, r, response.Error("invalid status", http.StatusBadRequest))
 			return
 		}
 		answer := req.Answer
@@ -76,15 +75,15 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		err = service.UpdateComplaintStatus(id, status, answer)
 		if err != nil {
 			log.Error("failed to update complaint status", sl.Err(err))
-			render.JSON(w, r, response.Error("failed to update complaint status"))
+			render.JSON(w, r, response.Error("failed to update complaint status", http.StatusInternalServerError))
 			return
 		}
 
 		log.Info("complaint status updated", slog.Int64("id", id), slog.String("status", string(status)))
 
 		// Send success response
-		render.JSON(w, r, httpserver.Response{
-			Response: response.OK(),
+		render.JSON(w, r, response.Response{
+			Status: http.StatusOK,
 		})
 	}
 }

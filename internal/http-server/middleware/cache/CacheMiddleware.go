@@ -24,12 +24,12 @@ func CacheMiddleware(redis *redis.Client, ttl time.Duration, log *slog.Logger) f
 				_, _ = w.Write([]byte(cached))
 				return
 			}
-			log.Error("Can not found in redis", sl.Err(err))
 			recorder := &responseRecorder{ResponseWriter: w, body: new(bytes.Buffer)}
 			next.ServeHTTP(recorder, r)
 
 			// Кешируем только успешные ответы (200 OK)
 			if recorder.status == http.StatusOK {
+				log.Info("Response body before caching", slog.String("body", recorder.body.String()))
 				err := redis.Set(ctx, key, recorder.body.String(), ttl).Err()
 				if err != nil {
 					log.Error("Failed to set cache", sl.Err(err))
