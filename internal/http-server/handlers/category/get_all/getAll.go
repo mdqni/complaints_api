@@ -38,6 +38,7 @@ func New(log *slog.Logger, getCategories CategoriesGetter) http.HandlerFunc {
 			return
 		}
 		log.Info("Categories found")
+		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, result)
 	}
 }

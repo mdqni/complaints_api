@@ -32,9 +32,7 @@ type Request struct {
 // @Failure      500  {object}  response.Response  "Ошибка сервера"
 // @Router       /category [post]
 func New(ctx context.Context, log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
-	log.Info("categoriesCreate handler initialized")
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Info("categoriesCreate handler called")
 		const op = "handlers.category.register.New"
 		log = log.With(
 			slog.String("op", op),

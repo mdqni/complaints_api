@@ -17,11 +17,11 @@ type Config struct {
 type RedisClient struct {
 	Addr        string        `yaml:"addr" env-default:"127.0.0.1:6379"`
 	User        string        `yaml:"user"`
-	Password    string        `yaml:"pass" env:"REDIS_PASSWORD" default:""`
-	DB          int           `yaml:"db" default:"0"`
-	MaxRetries  int           `yaml:"max_retries"`
-	DialTimeout time.Duration `yaml:"dial_timeout"`
-	Timeout     time.Duration `yaml:"timeout"`
+	Password    string        `yaml:"pass" env:"REDIS_PASSWORD" env-default:""`
+	DB          int           `yaml:"db" env-default:"0"`
+	MaxRetries  int           `yaml:"max_retries" env-default:"3"`
+	DialTimeout time.Duration `yaml:"dial_timeout" env-default:"5s"`
+	Timeout     time.Duration `yaml:"timeout" env-default:"10s"`
 }
 type HTTPServer struct {
 	Address     string        `yaml:"address" env-default:"localhost:8080"`

@@ -44,6 +44,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			return
 		}
 		log.Info("Categories found")
+		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, result)
 	}
 }

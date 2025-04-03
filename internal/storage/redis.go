@@ -10,13 +10,15 @@ import (
 
 func NewClient(ctx context.Context, cfg *config.Config, log *slog.Logger) (*redis.Client, error) {
 	db := redis.NewClient(&redis.Options{
-		Addr:         cfg.Addr,
-		DB:           cfg.DB,
+		Addr:         "127.0.0.1:6379",
+		DB:           0,
+		Password:     "",
 		MaxRetries:   cfg.MaxRetries,
 		DialTimeout:  cfg.DialTimeout,
 		ReadTimeout:  cfg.RedisClient.Timeout,
 		WriteTimeout: cfg.RedisClient.Timeout,
 	})
+	log.Info(db.String())
 
 	if err := db.Ping(ctx).Err(); err != nil {
 		log.Error("failed to connect to redis server", sl.Err(err))
