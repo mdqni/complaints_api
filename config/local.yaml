@@ -1,6 +1,14 @@
 env: "local" #local, dev, prod
 cgo_enabled: "1"
 connString: "postgresql://postgres:postgres@localhost:5432/complaintDB"
+redis_client:
+  addr: 127.0.0.1:6379
+  user: ""
+  pass: ""
+  db: 0
+  max_retries: 3
+  dial_timeout: 5s
+  timeout: 10s
 http_server:
   address: "localhost:8082"
   timeout: 4s

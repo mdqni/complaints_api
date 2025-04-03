@@ -3,7 +3,7 @@ package get_complaints_by_category_id
 import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
-	"complaint_server/internal/service"
+	"complaint_server/internal/service/complaint"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"log/slog"

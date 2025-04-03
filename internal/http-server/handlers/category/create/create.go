@@ -5,6 +5,8 @@ import (
 	http_server "complaint_server/internal/http-server"
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
+	service "complaint_server/internal/service/category"
+	"context"
 	"errors"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
@@ -15,14 +17,9 @@ import (
 )
 
 type Request struct {
-	ID          int    `json:"id" validate:"required"`
 	Title       string `json:"title" validate:"required"`
 	Description string `json:"description" validate:"required"`
 	Answer      string `json:"answer" validate:"required"`
-}
-
-type CategoriesCreator interface {
-	CreateCategory(category domain.Category) (int64, error)
 }
 
 // New @Summary      Создать категорию
@@ -35,9 +32,11 @@ type CategoriesCreator interface {
 // @Failure      400  {object}  response.Response  "Ошибка валидации или декодирования"
 // @Failure      500  {object}  response.Response  "Ошибка сервера"
 // @Router       /category [post]
-func New(log *slog.Logger, categoryCreator CategoriesCreator) http.HandlerFunc {
+func New(ctx context.Context, log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
+	log.Info("categoriesCreate handler initialized")
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.category.create.New"
+		log.Info("categoriesCreate handler called")
+		const op = "handlers.category.register.New"
 		log = log.With(
 			slog.String("op", op),
 			slog.String("request_id", middleware.GetReqID(r.Context())),
@@ -59,12 +58,11 @@ func New(log *slog.Logger, categoryCreator CategoriesCreator) http.HandlerFunc {
 			render.JSON(w, r, response.ValidationError(validationErrors))
 			return
 		}
-		categoryId := req.ID
 		description := req.Description
 		categoryName := req.Title
 		answer := req.Answer
 
-		categoryID, err := categoryCreator.CreateCategory(domain.Category{ID: categoryId, Title: categoryName, Description: description, Answer: answer})
+		categoryID, err := service.CreateCategory(ctx, domain.Category{Title: categoryName, Description: description, Answer: answer})
 		if err != nil {
 			log.Error("failed to save category", sl.Err(err))
 			w.WriteHeader(http.StatusInternalServerError)

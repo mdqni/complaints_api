@@ -1,13 +1,16 @@
 package pg
 
 import (
+	"complaint_server/internal/storage"
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"complaint_server/internal/domain"
 )
 
-func (s *Storage) GetCategories() ([]domain.Category, error) {
+func (s *Storage) GetCategories(context.Context) ([]domain.Category, error) {
 	const op = "storage.category.GetCategories"
 	rows, err := s.db.Query(context.Background(), `
 		SELECT id, title, description, answer
@@ -33,8 +36,29 @@ func (s *Storage) GetCategories() ([]domain.Category, error) {
 
 	return categories, nil
 }
+func (s *Storage) GetCategoryById(ctx context.Context, categoryID int) (domain.Category, error) {
+	const op = "storage.category.GetCategories"
+	query := `
+		SELECT id, title, description, answer
+		FROM categories WHERE id == $1`
+	var category domain.Category
+	err := s.db.QueryRow(ctx, query, categoryID).Scan(
+		&category.ID,
+		&category.Title,
+		&category.Description,
+		&category.Answer,
+	)
 
-func (s *Storage) CreateCategory(category domain.Category) (int64, error) {
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Category{}, storage.ErrCategoryNotFound
+	}
+	if err != nil {
+		return domain.Category{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return category, nil
+}
+func (s *Storage) CreateCategory(ctx context.Context, category domain.Category) (int64, error) {
 	const op = "storage.category.CreateCategory"
 	query := `INSERT INTO categories (title, description, answer) VALUES ($1, $2, $3) RETURNING id`
 	var categoryID int64
@@ -57,10 +81,10 @@ func (s *Storage) CategoryExists(name string) (bool, error) {
 	return count > 0, nil
 }
 
-func (s *Storage) DeleteCategoryById(index int) error {
+func (s *Storage) DeleteCategoryById(ctx context.Context, index int) error {
 	const op = "storage.category.DeleteCategoryById"
 	query := `DELETE FROM categories WHERE id = $1`
-	_, err := s.db.Exec(context.Background(), query, index)
+	_, err := s.db.Exec(ctx, query, index)
 	if err != nil {
 		return fmt.Errorf("%s: failed to delete category: %w", op, err)
 	}

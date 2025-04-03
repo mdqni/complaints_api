@@ -35,19 +35,26 @@ func (s *Storage) GetComplaintById(complaintID int) (domain.Complaint, error) {
 	const op = "storage.postgres.GetComplaintByID"
 
 	query := `
-		SELECT id, user_uuid, message, category_id, status, created_at, answer
-		FROM complaints
-		WHERE id = $1`
+		SELECT c.id, c.user_uuid, c.message, c.status, c.created_at, c.answer,
+		       cat.id, cat.title, cat.description, cat.answer
+		FROM complaints c
+		JOIN categories cat ON c.category_id = cat.id
+		WHERE c.id = $1`
 
 	var complaint domain.Complaint
+	var category domain.Category
+
 	err := s.db.QueryRow(context.Background(), query, complaintID).Scan(
 		&complaint.ID,
 		&complaint.UserUUID,
 		&complaint.Message,
-		&complaint.CategoryID,
 		&complaint.Status,
 		&complaint.CreatedAt,
 		&complaint.Answer,
+		&category.ID,
+		&category.Title,
+		&category.Description,
+		&category.Answer,
 	)
 
 	if errors.Is(err, sql.ErrNoRows) {
@@ -57,13 +64,20 @@ func (s *Storage) GetComplaintById(complaintID int) (domain.Complaint, error) {
 		return domain.Complaint{}, fmt.Errorf("%s: %w", op, err)
 	}
 
+	complaint.Category = category
 	return complaint, nil
 }
 
 func (s *Storage) GetComplaints() ([]domain.Complaint, error) {
 	const op = "storage.postgres.GetComplaints"
 
-	rows, err := s.db.Query(context.Background(), "SELECT id, user_uuid, message, category_id, status, created_at, answer FROM complaints")
+	query := `
+		SELECT c.id, c.user_uuid, c.message, c.status, c.created_at, c.answer,
+		       cat.id, cat.title, cat.description, cat.answer
+		FROM complaints c
+		JOIN categories cat ON c.category_id = cat.id`
+
+	rows, err := s.db.Query(context.Background(), query)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -72,19 +86,30 @@ func (s *Storage) GetComplaints() ([]domain.Complaint, error) {
 	var complaints []domain.Complaint
 	for rows.Next() {
 		var complaint domain.Complaint
+		var category domain.Category
+
 		err := rows.Scan(
 			&complaint.ID,
 			&complaint.UserUUID,
 			&complaint.Message,
-			&complaint.CategoryID,
 			&complaint.Status,
 			&complaint.CreatedAt,
 			&complaint.Answer,
+			&category.ID,
+			&category.Title,
+			&category.Description,
+			&category.Answer,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
+
+		complaint.Category = category
 		complaints = append(complaints, complaint)
+	}
+
+	if len(complaints) == 0 {
+		return nil, storage.ErrComplaintNotFound
 	}
 
 	if err = rows.Err(); err != nil {
@@ -96,7 +121,14 @@ func (s *Storage) GetComplaints() ([]domain.Complaint, error) {
 func (s *Storage) GetComplaintsByCategoryId(categoryId int) ([]domain.Complaint, error) {
 	const op = "storage.postgres.GetComplaintsByCategory"
 
-	rows, err := s.db.Query(context.Background(), "SELECT id, user_uuid, message, category_id, status, created_at FROM complaints WHERE category_id = $1", categoryId)
+	query := `
+		SELECT c.id, c.user_uuid, c.message, c.status, c.created_at, c.answer,
+		       cat.id, cat.title, cat.description, cat.answer
+		FROM complaints c
+		JOIN categories cat ON c.category_id = cat.id
+		WHERE c.category_id = $1`
+
+	rows, err := s.db.Query(context.Background(), query, categoryId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -105,18 +137,25 @@ func (s *Storage) GetComplaintsByCategoryId(categoryId int) ([]domain.Complaint,
 	var complaints []domain.Complaint
 	for rows.Next() {
 		var complaint domain.Complaint
+		var category domain.Category
+
 		err := rows.Scan(
 			&complaint.ID,
 			&complaint.UserUUID,
 			&complaint.Message,
-			&complaint.CategoryID,
 			&complaint.Status,
 			&complaint.CreatedAt,
 			&complaint.Answer,
+			&category.ID,
+			&category.Title,
+			&category.Description,
+			&category.Answer,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
+
+		complaint.Category = category
 		complaints = append(complaints, complaint)
 	}
 

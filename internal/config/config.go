@@ -9,9 +9,19 @@ import (
 )
 
 type Config struct {
-	Env        string `yaml:"env" env-default:"local"`
-	ConnString string `yaml:"connString" env-required:"true"`
-	HTTPServer `yaml:"http_server"`
+	Env         string `yaml:"env" env-default:"local"`
+	ConnString  string `yaml:"connString" env-required:"true"`
+	RedisClient `yaml:"redisClient"`
+	HTTPServer  `yaml:"http_server"`
+}
+type RedisClient struct {
+	Addr        string        `yaml:"addr" env-default:"127.0.0.1:6379"`
+	User        string        `yaml:"user"`
+	Password    string        `yaml:"pass" env:"REDIS_PASSWORD" default:""`
+	DB          int           `yaml:"db" default:"0"`
+	MaxRetries  int           `yaml:"max_retries"`
+	DialTimeout time.Duration `yaml:"dial_timeout"`
+	Timeout     time.Duration `yaml:"timeout"`
 }
 type HTTPServer struct {
 	Address     string        `yaml:"address" env-default:"localhost:8080"`

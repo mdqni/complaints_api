@@ -4,23 +4,15 @@ import (
 	"complaint_server/internal/domain"
 	"complaint_server/internal/storage"
 	"complaint_server/internal/storage/pg"
+	"errors"
 	"fmt"
 )
 
-// ComplaintStorage интерфейс для хранилища жалоб
-type ComplaintStorage interface {
-	SaveComplaint(userUUID string, categoryID int, message string) (string, error)
-	GetComplaintById(complaintID int) (domain.Complaint, error)
-	GetComplaintsByCategoryId(categoryId int) ([]domain.Complaint, error)
-	UpdateComplaintStatus(complaintID int64, status domain.ComplaintStatus, answer string) error
-	CheckComplaintLimit(userUUID string) (bool, error)
-	DeleteComplaint(id int) error
-}
 type ComplaintService struct {
 	storage *pg.Storage
 }
 
-func New(strg *pg.Storage) *ComplaintService {
+func NewComplaintsService(strg *pg.Storage) *ComplaintService {
 	return &ComplaintService{storage: strg}
 }
 
@@ -41,6 +33,8 @@ func (s *ComplaintService) CreateComplaint(userUUID string, categoryID int, mess
 		return "", fmt.Errorf("failed to save complaint: %w", err)
 	}
 
+	// Очищаем кеш после изменения БД
+	//redis.Del(ctx, "cache:/complaints")
 	return answer, nil
 }
 
@@ -55,10 +49,30 @@ func (s *ComplaintService) GetComplaintById(complaintID int) (domain.Complaint, 
 
 // GetAllComplaints получает все жалобы
 func (s *ComplaintService) GetAllComplaints() ([]domain.Complaint, error) {
+	//key := "cache:/complaints"
+	//// Проверяем кеш
+	//cachedData, err := redis.Get(ctx, key).Result()
+	//if err == nil {
+	//	// Данные найдены в кеше, декодируем их
+	//	var complaints []domain.Complaint
+	//	err := json.Unmarshal([]byte(cachedData), &complaints)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	return complaints, nil
+	//}
 	complaints, err := s.storage.GetComplaints()
+	if errors.Is(err, storage.ErrComplaintNotFound) {
+		return nil, storage.ErrComplaintNotFound
+	}
 	if err != nil {
 		return []domain.Complaint{}, err
 	}
+
+	//// Сохраняем в Redis на 5 минут
+	//jsonData, _ := json.Marshal(complaints)
+	//redis.Set(ctx, key, jsonData, 5*time.Minute)
+
 	return complaints, nil
 }
 

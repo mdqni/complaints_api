@@ -4,13 +4,14 @@ import (
 	"complaint_server/internal/domain"
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
+	"context"
 	"github.com/go-chi/render"
 	"log/slog"
 	"net/http"
 )
 
 type CategoriesGetter interface {
-	GetCategories() ([]domain.Category, error)
+	GetCategories(context.Context) ([]domain.Category, error)
 }
 
 // New @Summary      Получить все категории
@@ -28,7 +29,7 @@ func New(log *slog.Logger, getCategories CategoriesGetter) http.HandlerFunc {
 			slog.String("op", op),
 			slog.String("url", r.URL.String()))
 
-		result, err := getCategories.GetCategories()
+		result, err := getCategories.GetCategories(nil)
 
 		if err != nil {
 			log.Error(op, sl.Err(err))

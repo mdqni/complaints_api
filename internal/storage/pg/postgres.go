@@ -48,11 +48,17 @@ func New(connString string) (*Storage, error) {
 			answer TEXT,
 			FOREIGN KEY (category_id) REFERENCES categories(id)
 		);`,
+		`CREATE TABLE IF NOT EXISTS admins (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        role VARCHAR(20) NOT NULL DEFAULT 'auth',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
 	}
 
 	for _, table := range tables {
 		if _, err := pool.Exec(context.Background(), table); err != nil {
-			return nil, fmt.Errorf("%s: failed to create tables: %w", op, err)
+			return nil, fmt.Errorf("%s: failed to register tables: %w", op, err)
 		}
 	}
 

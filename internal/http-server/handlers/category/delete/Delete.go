@@ -4,6 +4,7 @@ import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
 	"complaint_server/internal/storage"
+	"context"
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -13,7 +14,7 @@ import (
 )
 
 type CategoryByIdDeleter interface {
-	DeleteCategoryById(id int) error
+	DeleteCategoryById(ctx context.Context, index int) error
 }
 
 // New @Summary      Удалить категорию по ID
@@ -48,8 +49,8 @@ func New(log *slog.Logger, deleteCategory CategoryByIdDeleter) http.HandlerFunc 
 			render.JSON(w, r, response.Error("Internal Server Error"))
 			return
 		}
-		err = deleteCategory.DeleteCategoryById(atoi)
-		if errors.Is(err, storage.ErrComplaintNotFound) {
+		err = deleteCategory.DeleteCategoryById(nil, atoi)
+		if errors.Is(err, storage.ErrCategoryNotFound) {
 			log.Error("category not found", sl.Err(err))
 			w.WriteHeader(http.StatusNotFound)
 			render.JSON(w, r, response.Error("category not found"))

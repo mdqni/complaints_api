@@ -3,7 +3,7 @@ package get_complaint_by_complaint_id
 import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
-	"complaint_server/internal/service"
+	"complaint_server/internal/service/complaint"
 	"complaint_server/internal/storage"
 	"errors"
 	"github.com/go-chi/chi/v5"

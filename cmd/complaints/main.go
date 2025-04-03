@@ -3,6 +3,7 @@ package main
 import (
 	_ "complaint_server/docs"
 	"complaint_server/internal/config"
+	"complaint_server/internal/http-server/handlers/auth"
 	categoriesCreate "complaint_server/internal/http-server/handlers/category/create"
 	deleteCategoryById "complaint_server/internal/http-server/handlers/category/delete"
 	categoriesGetAll "complaint_server/internal/http-server/handlers/category/get_all"
@@ -13,16 +14,22 @@ import (
 	"complaint_server/internal/http-server/handlers/complaints/get_complaints_by_category_id"
 	"complaint_server/internal/http-server/handlers/complaints/update_complaint_status"
 	"complaint_server/internal/http-server/middleware/admin_only"
+	"complaint_server/internal/http-server/middleware/cache"
 	mwLogger "complaint_server/internal/http-server/middleware/logger"
 	"complaint_server/internal/lib/logger/handlers/slogpretty"
 	"complaint_server/internal/lib/logger/sl"
-	"complaint_server/internal/service"
+	authService "complaint_server/internal/service/admin"
+	categoryService "complaint_server/internal/service/category"
+	complaintService "complaint_server/internal/service/complaint"
+	strg "complaint_server/internal/storage"
 	"complaint_server/internal/storage/pg"
 	"context"
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/go-chi/httprate"
+	"github.com/redis/go-redis/v9"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"log/slog"
 	"net/http"
@@ -48,6 +55,9 @@ const (
 // @host			localhost:8082
 // @BasePath		/
 func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	//Init Logger
 	cfg := config.MustLoad()
 	log := setupLogger(cfg.Env)
@@ -56,12 +66,21 @@ func main() {
 		slog.String("env", cfg.Env),
 	)
 	log.Debug("Debug message are enabled")
-
+	rdb := setupRedis(ctx, cfg, log)
 	storage := setupStorage(cfg.ConnString, log)
-	router := setupRouter(log, cfg, storage)
+	router := setupRouter(ctx, log, cfg, storage, rdb)
 
 	startServer(cfg, router, log)
 }
+
+func setupRedis(ctx context.Context, cfg *config.Config, log *slog.Logger) *redis.Client {
+	client, err := strg.NewClient(ctx, cfg, log)
+	if err != nil {
+		panic(err)
+	}
+	return client
+}
+
 func setupStorage(connString string, log *slog.Logger) *pg.Storage {
 	storage, err := pg.New(connString)
 	if err != nil {
@@ -71,28 +90,37 @@ func setupStorage(connString string, log *slog.Logger) *pg.Storage {
 	return storage
 }
 
-func setupRouter(log *slog.Logger, cfg *config.Config, storage *pg.Storage) chi.Router {
+func setupRouter(ctx context.Context, log *slog.Logger, cfg *config.Config, storage *pg.Storage, client *redis.Client) chi.Router {
 	router := chi.NewRouter()
 
 	// Middleware
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer, httprate.Limit(50, 1*time.Minute))
 	router.Use(mwLogger.New(log))
+	router.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowCredentials: true,
+	}))
 
 	// Routes
-	setupRoutes(cfg, router, log, storage)
+	setupRoutes(ctx, cfg, router, log, storage, client)
 	return router
 }
 
-func setupRoutes(cfg *config.Config, router chi.Router, log *slog.Logger, storage *pg.Storage) {
-	complaintService := service.New(storage)
-	router.Route("/complaint", func(r chi.Router) {
-		r.Post("/", create.New(log, complaintService))                           //Создать компл
-		r.Get("/", get_all.New(log, complaintService))                           //Получить все компл
-		r.Get("/{id}", get_complaint_by_complaint_id.New(log, complaintService)) //Получить компл по айди
+func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log *slog.Logger, storage *pg.Storage, client *redis.Client) {
+	_complaintService := complaintService.NewComplaintsService(storage)
+	_categoryService := categoryService.NewCategoriesService(storage)
+	_adminService := authService.NewAdminService(storage)
+	router.Route("/complaints", func(r chi.Router) {
+		r.Use(cache.CacheMiddleware(client, 2*time.Minute, log))
+		r.Post("/", create.New(log, _complaintService))                           //Создать компл
+		r.Get("/", get_all.New(log, _complaintService))                           //Получить все компл
+		r.Get("/{id}", get_complaint_by_complaint_id.New(log, _complaintService)) //Получить компл по айди
 	})
-	router.Route("/category", func(r chi.Router) {
-		r.Get("/", categoriesGetAll.New(log, storage))                           //Удаление категории
-		r.Get("/{id}", get_complaints_by_category_id.New(log, complaintService)) //Получить компл по категории айди
+	router.Route("/categories", func(r chi.Router) {
+		r.Get("/", categoriesGetAll.New(log, storage))                            //Удаление категории
+		r.Get("/{id}", get_complaints_by_category_id.New(log, _complaintService)) //Получить компл по категории айди
 	})
 	router.Route("/docs", func(r chi.Router) {
 		r.Use(middleware.BasicAuth("docs", map[string]string{
@@ -100,17 +128,21 @@ func setupRoutes(cfg *config.Config, router chi.Router, log *slog.Logger, storag
 		}))
 		r.Get("/*", httpSwagger.WrapHandler)
 	})
+	router.Route("/login", func(r chi.Router) {
+		r.Post("/*", auth.New(log, _adminService))
+	})
 
 	router.Route("/admin", func(r chi.Router) {
-		r.Use(admin_only.AdminOnlyMiddleware)
+
+		r.Use(admin_only.AdminOnlyMiddleware(log))
+
 		//Complaint
-		r.Put("/complaint/{id}/status", resolveComplaint.New(log, complaintService))
-		r.Delete("/complaint/{id}", deleteComplaint.New(log, complaintService)) //Удалить компл
+		r.Put("/complaints/{id}/status", resolveComplaint.New(log, _complaintService))
+		r.Delete("/complaints/{id}", deleteComplaint.New(log, _complaintService)) //Удалить компл
 
 		//Category
-		r.Post("/category", categoriesCreate.New(log, storage))          //Создание категории
-		r.Delete("/category/{id}", deleteCategoryById.New(log, storage)) //Удалить категории по АЙДИ
-
+		r.Post("/categories", categoriesCreate.New(ctx, log, _categoryService)) //Создание категории
+		r.Delete("/categories/{id}", deleteCategoryById.New(log, storage))      //Удалить категории по ID
 	})
 }
 
@@ -118,8 +150,8 @@ func startServer(cfg *config.Config, router chi.Router, log *slog.Logger) {
 	srv := &http.Server{
 		Addr:         cfg.Address,
 		Handler:      router,
-		ReadTimeout:  cfg.Timeout,
-		WriteTimeout: cfg.Timeout,
+		ReadTimeout:  cfg.HTTPServer.Timeout,
+		WriteTimeout: cfg.HTTPServer.Timeout,
 		IdleTimeout:  cfg.IdleTimeout,
 	}
 
@@ -147,6 +179,7 @@ func startServer(cfg *config.Config, router chi.Router, log *slog.Logger) {
 }
 
 func setupLogger(env string) *slog.Logger {
+
 	defaultLogger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	switch env {
 	case envLocal:

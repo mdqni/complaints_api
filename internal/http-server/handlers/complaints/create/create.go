@@ -3,7 +3,7 @@ package create
 import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
-	"complaint_server/internal/service"
+	"complaint_server/internal/service/complaint"
 	"complaint_server/internal/storage"
 	"errors"
 	"github.com/go-chi/chi/v5/middleware"
@@ -12,11 +12,12 @@ import (
 	_ "github.com/swaggo/http-swagger"
 	"log/slog"
 	"net/http"
+	"strconv"
 )
 
 type Request struct {
 	Message    string `json:"message" validate:"required"`
-	CategoryID int    `json:"categoryId" validate:"required"`
+	CategoryID string `json:"categoryId" validate:"required"`
 	UserUUID   string `json:"user_uuid"`
 }
 type ComplaintResponse struct {
@@ -37,10 +38,10 @@ type ComplaintResponse struct {
 // @Failure 400 {object} response.Response "Invalid request"
 // @Failure 429 {object} response.Response "Limit of one complaint per hour exceeded"
 // @Failure 500 {object} response.Response "Internal server error"
-// @Router /complaint [post]
+// @Router /complaints [post]
 func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.complaints.create.New"
+		const op = "handlers.complaints.register.New"
 		log = log.With(
 			slog.String("op", op),
 			slog.String("request_id", middleware.GetReqID(r.Context())),
@@ -63,17 +64,17 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			return
 		}
 		message := req.Message
-		categoryID := req.CategoryID
+		categoryID, _ := strconv.Atoi(req.CategoryID) //Фронт должен преобразовать
 		userUUID := req.UserUUID
 		answer, err := service.CreateComplaint(userUUID, categoryID, message)
 		if errors.Is(err, storage.ErrLimitOneComplaintInOneHour) {
-			log.Error("failed to create complaints", sl.Err(err))
+			log.Error("failed to register complaints", sl.Err(err))
 			w.WriteHeader(http.StatusTooManyRequests)
 			render.JSON(w, r, response.Error("You can only submit one complaint per hour. Please try again later."))
 			return
 		}
 		if err != nil {
-			log.Error("failed to create complaints", sl.Err(err))
+			log.Error("failed to register complaints", sl.Err(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("failed to save complaints"))
 		}
