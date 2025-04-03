@@ -3,6 +3,7 @@ package deleteComplaint
 import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
+	"complaint_server/internal/service/complaintService"
 	"complaint_server/internal/storage"
 	"errors"
 	"github.com/go-chi/chi/v5"
@@ -11,10 +12,6 @@ import (
 	"net/http"
 	"strconv"
 )
-
-type ComplaintDeleter interface {
-	DeleteComplaint(id int) error
-}
 
 // New DeleteComplaint godoc
 // @Summary Delete a complaint
@@ -26,10 +23,11 @@ type ComplaintDeleter interface {
 // @Failure 404 {object} response.Response "Complaint not found"
 // @Failure 500 {object} response.Response "Internal server error"
 // @Router /complaint/{id} [delete]
-func New(log *slog.Logger, deleteComplaint ComplaintDeleter) http.HandlerFunc {
+func New(log *slog.Logger, service *complaintService.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.delete.New"
 
+		ctx := r.Context()
 		log := log.With(
 			slog.String("op", op),
 			slog.String("url", r.URL.String()))
@@ -38,7 +36,7 @@ func New(log *slog.Logger, deleteComplaint ComplaintDeleter) http.HandlerFunc {
 		if id == "" {
 			log.Info("id can not be empty")
 			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.Error("invalid request"))
+			render.JSON(w, r, response.Error("invalid request", http.StatusBadRequest))
 
 			return
 		}
@@ -46,17 +44,17 @@ func New(log *slog.Logger, deleteComplaint ComplaintDeleter) http.HandlerFunc {
 		if err != nil {
 			return
 		}
-		err = deleteComplaint.DeleteComplaint(atoi)
+		err = service.DeleteComplaint(ctx, atoi)
 		if errors.Is(err, storage.ErrComplaintNotFound) {
 			log.Error("complaint not found", sl.Err(err))
 			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.Error("complaint not found"))
+			render.JSON(w, r, response.Error("complaint not found", http.StatusBadRequest))
 			return
 		}
 		if err != nil {
 			log.Info("failed to delete complaint", sl.Err(err))
 			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("internal error"))
+			render.JSON(w, r, response.Error("internal error", http.StatusBadRequest))
 			return
 		}
 		log.Info("complaint deleted")
