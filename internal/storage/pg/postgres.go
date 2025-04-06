@@ -32,14 +32,9 @@ func New(connString string) (*Storage, error) {
 			description TEXT NOT NULL,
 			answer TEXT NOT NULL
 		);`,
-		`CREATE TABLE IF NOT EXISTS users (
-			id SERIAL PRIMARY KEY,
-			uuid TEXT NOT NULL UNIQUE,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		);`,
 		`CREATE TABLE IF NOT EXISTS complaints (
 			id SERIAL PRIMARY KEY,
-			user_uuid TEXT NOT NULL,
+			barcode TEXT NOT NULL,
 			category_id INTEGER NOT NULL,
 			message TEXT NOT NULL,
 			status TEXT NOT NULL DEFAULT 'pending',
@@ -50,7 +45,7 @@ func New(connString string) (*Storage, error) {
 		);`,
 		`CREATE TABLE IF NOT EXISTS admins (
         id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
+        barcode VARCHAR(50) UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         role VARCHAR(20) NOT NULL DEFAULT 'auth',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,

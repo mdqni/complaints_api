@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/redis/go-redis/v9"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -23,7 +24,7 @@ import (
 // @Failure 404 {object} response.Response "Complaint not found"
 // @Failure 500 {object} response.Response "Internal server error"
 // @Router /complaint/{id} [delete]
-func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
+func New(log *slog.Logger, service *service.ComplaintService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.delete.New"
 
@@ -57,6 +58,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			render.JSON(w, r, response.Error("internal error", http.StatusBadRequest))
 			return
 		}
+		client.Del(ctx, "cache:/complaints")
 		log.Info("complaint deleted")
 		render.JSON(w, r, response.OK())
 

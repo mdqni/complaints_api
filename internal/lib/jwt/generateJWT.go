@@ -8,10 +8,10 @@ import (
 
 func GenerateJWT(admin *domain.Admin) (string, error) {
 	claims := jwt.MapClaims{
-		"id":       admin.ID,
-		"username": admin.Username,
-		"role":     admin.Role,
-		"exp":      time.Now().Add(time.Hour * 24).Unix(), // Токен на 24 часа
+		"id":      admin.ID,
+		"barcode": admin.Barcode,
+		"role":    "admin",
+		"exp":     time.Now().Add(time.Hour * 24).Unix(), // Токен на 24 часа
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

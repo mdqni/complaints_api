@@ -1,4 +1,4 @@
-package categoriesCreate
+package updateCategory
 
 import (
 	"complaint_server/internal/domain"
@@ -13,17 +13,17 @@ import (
 	"github.com/redis/go-redis/v9"
 	"log/slog"
 	"net/http"
-	"strconv"
 )
 
 type Request struct {
+	Id          int    `json:"id"`
 	Title       string `json:"title" validate:"required"`
 	Description string `json:"description" validate:"required"`
 	Answer      string `json:"answer" validate:"required"`
 }
 
-// New @Summary      Создать категорию
-// @Description  Создает новую категорию жалоб.
+// New @Summary      Обновить категорию
+// @Description  Обновляет категорию жалоб.
 // @Tags         Categories
 // @Accept       json
 // @Produce      json
@@ -34,7 +34,7 @@ type Request struct {
 // @Router       /category [post]
 func New(ctx context.Context, log *slog.Logger, service *service.CategoryService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.category.register.New"
+		const op = "handlers.category.update.New"
 		log = log.With(
 			slog.String("op", op),
 			slog.String("request_id", middleware.GetReqID(r.Context())),
@@ -56,17 +56,17 @@ func New(ctx context.Context, log *slog.Logger, service *service.CategoryService
 			render.JSON(w, r, response.ValidationError(validationErrors))
 			return
 		}
+		log.Info("Req: ", req)
 		description := req.Description
 		categoryName := req.Title
 		answer := req.Answer
-
-		categoryID, err := service.CreateCategory(r.Context(), domain.Category{Title: categoryName, Description: description, Answer: answer})
+		id := req.Id
+		_, err = service.UpdateCategory(r.Context(), domain.Category{ID: id, Title: categoryName, Description: description, Answer: answer})
 		if err != nil {
-			log.Error("failed to save category", sl.Err(err))
+			log.Error(err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("failed to save complaints", http.StatusInternalServerError))
+			render.JSON(w, r, response.Error("failed to update category", http.StatusInternalServerError))
 		}
-		log.Info("category saved on "+strconv.Itoa(int(categoryID))+" ID", slog.Int64("id", categoryID))
 		client.Del(ctx, "cache:/categories")
 		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, response.Response{Status: http.StatusOK})

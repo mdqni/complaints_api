@@ -35,7 +35,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			render.JSON(w, r, response.Error("invalid category id", http.StatusBadRequest))
 		}
-		result, err := service.GetComplaintsByCategoryId(categoryId)
+		result, err := service.GetComplaintsByCategoryId(r.Context(), categoryId)
 
 		if err != nil {
 			log.Error(op, sl.Err(err))

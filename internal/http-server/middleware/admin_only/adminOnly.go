@@ -48,13 +48,13 @@ func AdminOnlyMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 			}
 
 			role, ok := claims["role"].(string)
-			if !ok || role != "auth" {
+			if !ok || role != "admin" {
 				logger.Warn("Forbidden access", slog.String("role", role))
 				http.Error(w, "Forbidden", http.StatusForbidden)
 				return
 			}
 			logger.Info("Admin passed")
-			ctx := context.WithValue(r.Context(), "username", claims["username"])
+			ctx := context.WithValue(r.Context(), "barcode", claims["barcode"])
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

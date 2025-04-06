@@ -12,13 +12,12 @@ import (
 	_ "github.com/swaggo/http-swagger"
 	"log/slog"
 	"net/http"
-	"strconv"
 )
 
 type Request struct {
 	Message    string `json:"message" validate:"required"`
-	CategoryID string `json:"categoryId" validate:"required"`
-	UserUUID   string `json:"user_uuid"`
+	CategoryID int    `json:"category_id" validate:"required"`
+	Barcode    string `json:"barcode"`
 }
 type ComplaintResponse struct {
 	Status int `json:"status"`
@@ -64,9 +63,9 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			return
 		}
 		message := req.Message
-		categoryID, _ := strconv.Atoi(req.CategoryID) //Фронт должен преобразовать
-		userUUID := req.UserUUID
-		answer, err := service.CreateComplaint(userUUID, categoryID, message)
+		categoryID := req.CategoryID //Фронт должен преобразовать
+		barcode := req.Barcode
+		complaintID, answer, err := service.CreateComplaint(r.Context(), barcode, categoryID, message)
 		if errors.Is(err, storage.ErrLimitOneComplaintInOneHour) {
 			log.Error("failed to register complaints", sl.Err(err))
 			w.WriteHeader(http.StatusTooManyRequests)
@@ -78,9 +77,10 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, response.Error("failed to save complaints", http.StatusInternalServerError))
 		}
+		render.Status(r, http.StatusOK)
 		render.JSON(w, r, map[string]interface{}{
-			"status": http.StatusOK,
 			"data": map[string]interface{}{
+				"id":     complaintID,
 				"answer": answer,
 			},
 		})

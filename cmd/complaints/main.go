@@ -7,12 +7,14 @@ import (
 	categoriesCreate "complaint_server/internal/http-server/handlers/category/create"
 	deleteCategoryById "complaint_server/internal/http-server/handlers/category/delete"
 	categoriesGetAll "complaint_server/internal/http-server/handlers/category/get_all"
+	"complaint_server/internal/http-server/handlers/category/get_by_id"
+	updateCategory "complaint_server/internal/http-server/handlers/category/update"
 	"complaint_server/internal/http-server/handlers/complaints/create"
 	deleteComplaint "complaint_server/internal/http-server/handlers/complaints/delete"
 	"complaint_server/internal/http-server/handlers/complaints/get_all"
 	"complaint_server/internal/http-server/handlers/complaints/get_complaint_by_complaint_id"
 	"complaint_server/internal/http-server/handlers/complaints/get_complaints_by_category_id"
-	"complaint_server/internal/http-server/handlers/complaints/update_complaint_status"
+	"complaint_server/internal/http-server/handlers/complaints/update"
 	"complaint_server/internal/http-server/middleware/admin_only"
 	"complaint_server/internal/http-server/middleware/cache"
 	mwLogger "complaint_server/internal/http-server/middleware/logger"
@@ -61,6 +63,7 @@ func main() {
 	//Init Logger
 	cfg := config.MustLoad()
 	log := setupLogger(cfg.Env)
+	//log.Info(password) Admin
 	log.Info(
 		"starting complaints server",
 		slog.String("env", cfg.Env),
@@ -97,8 +100,8 @@ func setupRouter(ctx context.Context, log *slog.Logger, cfg *config.Config, stor
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer, httprate.Limit(50, 1*time.Minute))
 	router.Use(mwLogger.New(log))
 	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		AllowCredentials: true,
 	}))
@@ -113,15 +116,17 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 	_categoryService := categoryService.NewCategoriesService(storage)
 	_adminService := authService.NewAdminService(storage)
 	router.Route("/complaints", func(r chi.Router) {
-		r.Post("/", create.New(log, _complaintService))                                                                                   //Создать компл
-		r.With(cache.CacheMiddleware(client, 5*time.Minute, log)).Get("/", get_all.New(ctx, log, _complaintService, client))              // Получить все компл
-		r.With(cache.CacheMiddleware(client, 2*time.Minute, log)).Get("/{id}", get_complaint_by_complaint_id.New(log, _complaintService)) // Получить компл по айди
+		r.Post("/", create.New(log, _complaintService))                                                                      //Создать компл
+		r.With(cache.CacheMiddleware(client, 3*time.Minute, log)).Get("/", get_all.New(ctx, log, _complaintService, client)) // Получить все компл
+		r.Get("/{id}", get_complaint_by_complaint_id.New(log, _complaintService))                                            // Получить компл по айди
 	})
 	router.Route("/categories", func(r chi.Router) {
-		r.Use(cache.CacheMiddleware(client, 5*time.Minute, log))
-		r.Get("/", categoriesGetAll.New(log, storage))                            //Удаление категории
-		r.Get("/{id}", get_complaints_by_category_id.New(log, _complaintService)) //Получить компл по категории айди
+		r.Use(cache.CacheMiddleware(client, 3*time.Minute, log))
+		r.Get("/", categoriesGetAll.New(log, _categoryService))
+		r.Get("/{id}", categories_get_by_id.New(log, _categoryService))
+		r.Get("/{id}/complaints", get_complaints_by_category_id.New(log, _complaintService)) //Получить компл по категории айди
 	})
+
 	router.Route("/docs", func(r chi.Router) {
 		r.Use(middleware.BasicAuth("docs", map[string]string{
 			cfg.HTTPServer.User: cfg.HTTPServer.Password,
@@ -135,14 +140,14 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 	router.Route("/admin", func(r chi.Router) {
 
 		r.Use(admin_only.AdminOnlyMiddleware(log))
-
 		//Complaint
-		r.Put("/complaints/{id}/status", resolveComplaint.New(log, _complaintService))
-		r.Delete("/complaints/{id}", deleteComplaint.New(log, _complaintService)) //Удалить компл
+		r.Put("/complaints/{id}", update.New(log, _complaintService, client))
+		r.Delete("/complaints/{id}", deleteComplaint.New(log, _complaintService, client)) //Удалить компл
 
 		//Category
-		r.Post("/categories", categoriesCreate.New(ctx, log, _categoryService)) //Создание категории
-		r.Delete("/categories/{id}", deleteCategoryById.New(log, storage))      //Удалить категории по ID
+		r.Post("/categories", categoriesCreate.New(ctx, log, _categoryService, client)) //Создание категории
+		r.Put("/categories/{id}", updateCategory.New(ctx, log, _categoryService, client))
+		r.Delete("/categories/{id}", deleteCategoryById.New(log, storage)) //Удалить категории по ID
 	})
 }
 

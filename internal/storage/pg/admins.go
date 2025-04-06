@@ -17,10 +17,10 @@ func (s *Storage) CreateAdmin(ctx context.Context, admin *domain.Admin) error {
 	}
 
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO admins (username, password_hash, role)
+		INSERT INTO admins (barcode, password_hash, role)
 		VALUES ($1, $2, $3)
-		ON CONFLICT (username) DO NOTHING;
-	`, admin.Username, string(hashedPassword), admin.Role)
+		ON CONFLICT (barcode) DO NOTHING;
+	`, admin.Barcode, string(hashedPassword))
 
 	if err != nil {
 		return fmt.Errorf("%s: failed to insert auth: %w", op, err)
@@ -30,11 +30,11 @@ func (s *Storage) CreateAdmin(ctx context.Context, admin *domain.Admin) error {
 }
 
 func (s *Storage) GetAdminByUsername(ctx context.Context, username string) (*domain.Admin, error) {
-	query := "SELECT id, username, password_hash, role, created_at FROM admins WHERE username = $1"
+	query := "SELECT id, barcode, password_hash, created_at FROM admins WHERE barcode = $1"
 	row := s.db.QueryRow(ctx, query, username)
 
 	var admin domain.Admin
-	err := row.Scan(&admin.ID, &admin.Username, &admin.PasswordHash, &admin.Role, &admin.CreatedAt)
+	err := row.Scan(&admin.ID, &admin.Barcode, &admin.PasswordHash, &admin.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get auth: %w", err)
 	}

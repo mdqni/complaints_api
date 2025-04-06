@@ -11,31 +11,31 @@ import (
 )
 
 // SaveComplaint сохраняет новую жалобу в базе данных.
-func (s *Storage) SaveComplaint(userUUID string, categoryID int, message string) (string, error) {
+func (s *Storage) SaveComplaint(ctx context.Context, barcodee string, categoryID int, message string) (int, string, error) {
 	// Сохраняем жалобу
-	query := `INSERT INTO complaints (user_uuid, category_id, message) VALUES ($1, $2, $3) RETURNING id`
+	query := `INSERT INTO complaints (barcode, category_id, message) VALUES ($1, $2, $3) RETURNING id`
 	var complaintID int
-	err := s.db.QueryRow(context.Background(), query, userUUID, categoryID, message).Scan(&complaintID)
+	err := s.db.QueryRow(ctx, query, barcodee, categoryID, message).Scan(&complaintID)
 	if err != nil {
-		return "", fmt.Errorf("failed to save complaint: %w", err)
+		return 0, "", fmt.Errorf("failed to save complaint: %w", err)
 	}
 
 	// Получаем ответ из категории
 	var answer string
-	err = s.db.QueryRow(context.Background(), `SELECT answer FROM categories WHERE id = $1`, categoryID).Scan(&answer)
+	err = s.db.QueryRow(ctx, `SELECT answer FROM categories WHERE id = $1`, categoryID).Scan(&answer)
 	if err != nil {
-		return "", fmt.Errorf("failed to get category answer: %w", err)
+		return 0, "", fmt.Errorf("failed to get category answer: %w", err)
 	}
 
-	return answer, nil
+	return complaintID, answer, nil
 }
 
 // GetComplaintById возвращает жалобу по её ID.
-func (s *Storage) GetComplaintById(complaintID int) (domain.Complaint, error) {
+func (s *Storage) GetComplaintById(ctx context.Context, complaintID int) (domain.Complaint, error) {
 	const op = "storage.postgres.GetComplaintByID"
 
 	query := `
-		SELECT c.id, c.user_uuid, c.message, c.status, c.created_at, c.answer,
+		SELECT c.id, c.barcode, c.message, c.status, c.created_at, c.answer,
 		       cat.id, cat.title, cat.description, cat.answer
 		FROM complaints c
 		JOIN categories cat ON c.category_id = cat.id
@@ -44,9 +44,9 @@ func (s *Storage) GetComplaintById(complaintID int) (domain.Complaint, error) {
 	var complaint domain.Complaint
 	var category domain.Category
 
-	err := s.db.QueryRow(context.Background(), query, complaintID).Scan(
+	err := s.db.QueryRow(ctx, query, complaintID).Scan(
 		&complaint.ID,
-		&complaint.UserUUID,
+		&complaint.Barcode,
 		&complaint.Message,
 		&complaint.Status,
 		&complaint.CreatedAt,
@@ -68,16 +68,16 @@ func (s *Storage) GetComplaintById(complaintID int) (domain.Complaint, error) {
 	return complaint, nil
 }
 
-func (s *Storage) GetComplaints() ([]domain.Complaint, error) {
+func (s *Storage) GetComplaints(ctx context.Context) ([]domain.Complaint, error) {
 	const op = "storage.postgres.GetComplaints"
 
 	query := `
-		SELECT c.id, c.user_uuid, c.message, c.status, c.created_at, c.answer,
+		SELECT c.id, c.barcode, c.message, c.status, c.created_at, c.answer,
 		       cat.id, cat.title, cat.description, cat.answer
 		FROM complaints c
 		JOIN categories cat ON c.category_id = cat.id`
 
-	rows, err := s.db.Query(context.Background(), query)
+	rows, err := s.db.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -90,7 +90,7 @@ func (s *Storage) GetComplaints() ([]domain.Complaint, error) {
 
 		err := rows.Scan(
 			&complaint.ID,
-			&complaint.UserUUID,
+			&complaint.Barcode,
 			&complaint.Message,
 			&complaint.Status,
 			&complaint.CreatedAt,
@@ -118,17 +118,17 @@ func (s *Storage) GetComplaints() ([]domain.Complaint, error) {
 	return complaints, nil
 }
 
-func (s *Storage) GetComplaintsByCategoryId(categoryId int) ([]domain.Complaint, error) {
+func (s *Storage) GetComplaintsByCategoryId(ctx context.Context, categoryId int) ([]domain.Complaint, error) {
 	const op = "storage.postgres.GetComplaintsByCategory"
 
 	query := `
-		SELECT c.id, c.user_uuid, c.message, c.status, c.created_at, c.answer,
+		SELECT c.id, c.barcode, c.message, c.status, c.created_at, c.answer,
 		       cat.id, cat.title, cat.description, cat.answer
 		FROM complaints c
 		JOIN categories cat ON c.category_id = cat.id
 		WHERE c.category_id = $1`
 
-	rows, err := s.db.Query(context.Background(), query, categoryId)
+	rows, err := s.db.Query(ctx, query, categoryId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -141,7 +141,7 @@ func (s *Storage) GetComplaintsByCategoryId(categoryId int) ([]domain.Complaint,
 
 		err := rows.Scan(
 			&complaint.ID,
-			&complaint.UserUUID,
+			&complaint.Barcode,
 			&complaint.Message,
 			&complaint.Status,
 			&complaint.CreatedAt,
@@ -166,12 +166,12 @@ func (s *Storage) GetComplaintsByCategoryId(categoryId int) ([]domain.Complaint,
 }
 
 // UpdateComplaintStatus обновляет статус жалобы.
-func (s *Storage) UpdateComplaintStatus(complaintID int64, status domain.ComplaintStatus, answer string) error {
+func (s *Storage) UpdateComplaintStatus(ctx context.Context, complaintID int64, status domain.ComplaintStatus, answer string) error {
 	const op = "storage.postgres.UpdateComplaintStatus"
 
 	// Проверяем, существует ли жалоба с таким ID
 	var exists bool
-	err := s.db.QueryRow(context.Background(), "SELECT EXISTS(SELECT 1 FROM complaints WHERE id = $1)", complaintID).Scan(&exists)
+	err := s.db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM complaints WHERE id = $1)", complaintID).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -187,7 +187,7 @@ func (s *Storage) UpdateComplaintStatus(complaintID int64, status domain.Complai
 		WHERE id = $2`
 
 	// Выполняем запрос на обновление
-	result, err := s.db.Exec(context.Background(), query, status, complaintID, answer)
+	result, err := s.db.Exec(ctx, query, status, complaintID, answer)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -204,17 +204,17 @@ func (s *Storage) UpdateComplaintStatus(complaintID int64, status domain.Complai
 }
 
 // CheckComplaintLimit проверяет временной лимит для отправки жалоб.
-func (s *Storage) CheckComplaintLimit(userUUID string) (bool, error) {
+func (s *Storage) CheckComplaintLimit(ctx context.Context, barcode string) (bool, error) {
 	const op = "storage.postgres.CheckComplaintLimit"
 
 	// Получаем время последней жалобы от пользователя
 	var lastComplaintTime time.Time
-	err := s.db.QueryRow(context.Background(), `
+	err := s.db.QueryRow(ctx, `
 		SELECT created_at 
 		FROM complaints 
-		WHERE user_uuid = $1 
+		WHERE barcode = $1 
 		ORDER BY created_at DESC 
-		LIMIT 1`, userUUID).Scan(&lastComplaintTime)
+		LIMIT 1`, barcode).Scan(&lastComplaintTime)
 
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return false, fmt.Errorf("%s: %w", op, err)
@@ -243,4 +243,63 @@ func (s *Storage) DeleteComplaint(ctx context.Context, id int) error {
 	}
 
 	return nil
+}
+
+func (s *Storage) UpdateComplaint(ctx context.Context, complaintID int64, complaint domain.Complaint) (domain.Complaint, error) {
+	const op = "storage.postgres.UpdateComplaint"
+
+	// Проверка существования жалобы
+	var exists bool
+	err := s.db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM complaints WHERE id = $1)", complaintID).Scan(&exists)
+	if err != nil {
+		return domain.Complaint{}, fmt.Errorf("%s: %w", op, err)
+	}
+	if !exists {
+		return domain.Complaint{}, storage.ErrComplaintNotFound
+	}
+
+	// Проверка существования категории
+	var categoryExists bool
+	err = s.db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM categories WHERE id = $1)", complaint.Category.ID).Scan(&categoryExists)
+	if err != nil {
+		return domain.Complaint{}, fmt.Errorf("%s: %w", op, err)
+	}
+	if !categoryExists {
+		return domain.Complaint{}, fmt.Errorf("category with id %d does not exist", complaint.Category.ID)
+	}
+
+	// Обновление и возврат обновлённой записи
+	query := `
+        UPDATE complaints
+        SET barcode = $1, category_id = $2, message = $3, status = $4, answer = $5, updated_at = $6
+        WHERE id = $7
+        RETURNING id, barcode, category_id, message, status, answer, created_at, updated_at
+    `
+
+	var updated domain.Complaint
+	var answer sql.NullString
+	err = s.db.QueryRow(ctx, query,
+		complaint.Barcode,
+		complaint.Category.ID,
+		complaint.Message,
+		complaint.Status,
+		complaint.Answer.String,
+		time.Now(),
+		complaintID,
+	).Scan(
+		&updated.ID,
+		&updated.Barcode,
+		&updated.Category.ID,
+		&updated.Message,
+		&updated.Status,
+		&answer,
+		&updated.CreatedAt,
+		&updated.UpdatedAt,
+	)
+	if err != nil {
+		return domain.Complaint{}, fmt.Errorf("%s: %w", op, err)
+	}
+	updated.Answer = answer
+
+	return updated, nil
 }

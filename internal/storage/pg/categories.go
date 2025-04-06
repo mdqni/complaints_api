@@ -10,9 +10,9 @@ import (
 	"complaint_server/internal/domain"
 )
 
-func (s *Storage) GetCategories(context.Context) ([]domain.Category, error) {
+func (s *Storage) GetCategories(ctx context.Context) ([]domain.Category, error) {
 	const op = "storage.category.GetCategories"
-	rows, err := s.db.Query(context.Background(), `
+	rows, err := s.db.Query(ctx, `
 		SELECT id, title, description, answer
 		FROM categories`)
 	if err != nil {
@@ -37,10 +37,10 @@ func (s *Storage) GetCategories(context.Context) ([]domain.Category, error) {
 	return categories, nil
 }
 func (s *Storage) GetCategoryById(ctx context.Context, categoryID int) (domain.Category, error) {
-	const op = "storage.category.GetCategories"
+	const op = "storage.category.GetCategoriesByID"
 	query := `
 		SELECT id, title, description, answer
-		FROM categories WHERE id == $1`
+		FROM categories WHERE id = $1`
 	var category domain.Category
 	err := s.db.QueryRow(ctx, query, categoryID).Scan(
 		&category.ID,
@@ -89,4 +89,26 @@ func (s *Storage) DeleteCategoryById(ctx context.Context, index int) error {
 		return fmt.Errorf("%s: failed to delete category: %w", op, err)
 	}
 	return nil
+}
+func (s *Storage) UpdateCategory(ctx context.Context, category domain.Category) (int, error) {
+	const op = "storage.category.UpdateCategory"
+
+	query := `
+		UPDATE categories
+		SET title = $1,
+			description = $2,
+			answer = $3
+		WHERE id = $4
+	`
+
+	cmdTag, err := s.db.Exec(ctx, query, category.Title, category.Description, category.Answer, category.ID)
+	if err != nil {
+		return 0, fmt.Errorf("%s: failed to update category: %w", op, err)
+	}
+
+	if cmdTag.RowsAffected() == 0 {
+		return 0, storage.ErrCategoryNotFound
+	}
+
+	return category.ID, nil
 }

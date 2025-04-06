@@ -17,7 +17,7 @@ type Config struct {
 type RedisClient struct {
 	Addr        string        `yaml:"addr" env-default:"127.0.0.1:6379"`
 	User        string        `yaml:"user"`
-	Password    string        `yaml:"pass" env:"REDIS_PASSWORD" env-default:""`
+	Password    string        `yaml:"pass" env-default:""`
 	DB          int           `yaml:"db" env-default:"0"`
 	MaxRetries  int           `yaml:"max_retries" env-default:"3"`
 	DialTimeout time.Duration `yaml:"dial_timeout" env-default:"5s"`

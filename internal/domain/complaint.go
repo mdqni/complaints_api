@@ -7,10 +7,10 @@ import (
 
 type Complaint struct {
 	ID        int            `json:"id"`
-	UserUUID  string         `json:"user_uuid"`
+	Barcode   string         `json:"barcode"`
 	Category  Category       `json:"category"`
 	Message   string         `json:"message"`
-	Status    string         `json:"status"` // "approved" or "rejected", default is "rending"
+	Status    string         `json:"status"` // "approved" or "rejected", default is "pending"
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	Answer    sql.NullString `json:"answer" swaggertype:"string"`

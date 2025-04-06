@@ -72,7 +72,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		}
 		answer := req.Answer
 		// Update the complaint status
-		err = service.UpdateComplaintStatus(id, status, answer)
+		err = service.UpdateComplaintStatus(r.Context(), id, status, answer)
 		if err != nil {
 			log.Error("failed to update complaint status", sl.Err(err))
 			render.JSON(w, r, response.Error("failed to update complaint status", http.StatusInternalServerError))

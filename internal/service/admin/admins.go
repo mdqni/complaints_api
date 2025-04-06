@@ -20,7 +20,7 @@ func NewAdminService(adminStorage *pg.Storage) *AdminService {
 func (s *AdminService) Login(ctx context.Context, username, password string) (*domain.Admin, error) {
 	admin, err := s.adminStorage.GetAdminByUsername(ctx, username)
 	if err != nil {
-		return nil, errors.New("invalid username or password")
+		return nil, err
 	}
 
 	// Проверка пароля

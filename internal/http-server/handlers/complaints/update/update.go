@@ -4,17 +4,18 @@ import (
 	"complaint_server/internal/domain"
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
-	"complaint_server/internal/service/complaintService"
+	"complaint_server/internal/service/complaint"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
+	"github.com/redis/go-redis/v9"
 	"log/slog"
 	"net/http"
 	"strconv"
 )
 
 type Request struct {
-	complaint domain.Complaint
+	Complaint domain.Complaint `json:"data"`
 }
 
 // New UpdateComplaint godoc
@@ -29,7 +30,7 @@ type Request struct {
 // @Failure 404 {object} response.Response "Complaint not found"
 // @Failure 500 {object} response.Response "Internal server error"
 // @Router /complaints/{id} [put]
-func New(log *slog.Logger, service *complaintService.ComplaintService) http.HandlerFunc {
+func New(log *slog.Logger, service *service.ComplaintService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.update.New"
 
@@ -45,34 +46,43 @@ func New(log *slog.Logger, service *complaintService.ComplaintService) http.Hand
 		id, err := strconv.ParseInt(complaintID, 10, 64)
 		if err != nil {
 			log.Error("invalid complaint ID", sl.Err(err))
-			render.JSON(w, r, response.Error("invalid complaint ID", http.StatusBadRequest))
+			render.JSON(w, r, response.Response{Status: http.StatusOK, Message: "invalid complaint ID"})
 			return
 		}
 
 		// Decode the request body into a Request struct
 		var req Request
 		err = render.DecodeJSON(r.Body, &req)
+
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err))
-			render.JSON(w, r, response.Error("failed to decode request", http.StatusBadRequest))
+			render.JSON(w, r, response.Response{Message: "failed to decode request", Status: http.StatusBadRequest})
 			return
 		}
 		log.Info("request body decoded", slog.Any("request", req))
 
 		// Update the complaint
-		err = service.UpdateComplaint(ctx, id, req.complaint)
+		log.Info("Complaints:", req.Complaint)
+		complaint, err := service.UpdateComplaint(ctx, id, req.Complaint)
 		if err != nil {
-			log.Error("failed to update complaint status", sl.Err(err))
-			render.JSON(w, r, response.Error("failed to update complaint status", http.StatusInternalServerError))
+			log.Error("failed to update complaint", sl.Err(err))
+			render.JSON(w, r, response.Response{Message: "failed to update complaint", Status: http.StatusInternalServerError})
 			return
 		}
 
 		log.Info("complaint updated", slog.Int64("id", id))
-
+		err = client.Del(ctx, "cache:/complaints").Err()
+		if err != nil {
+			log.Error("failed to delete cache", sl.Err(err))
+		}
+		w.WriteHeader(http.StatusOK)
 		// Send success response
-		render.JSON(w, r, response.Response{
-			Status: http.StatusOK,
+		render.JSON(w, r, map[string]interface{}{
+			"data": map[string]interface{}{
+				"id":  complaintID,
+				"new": complaint,
+			},
 		})
-		return
+
 	}
 }

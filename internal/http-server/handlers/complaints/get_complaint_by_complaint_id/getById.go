@@ -32,7 +32,12 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			slog.String("op", op),
 			slog.String("url", r.URL.String()))
 		id, err := strconv.Atoi(chi.URLParam(r, "id"))
-		result, err := service.GetComplaintById(id)
+		if err != nil {
+			log.Error("incorrect id on params", sl.Err(err))
+			render.JSON(w, r, response.Error("incorrect id on params", http.StatusBadRequest))
+			return
+		}
+		result, err := service.GetComplaintById(r.Context(), id)
 		if errors.Is(err, storage.ErrComplaintNotFound) {
 			log.Error("complaint not found", sl.Err(err))
 			render.JSON(w, r, response.Error("complaint with this id not found", http.StatusNotFound))

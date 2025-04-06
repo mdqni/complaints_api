@@ -18,30 +18,28 @@ func NewComplaintsService(strg *pg.Storage) *ComplaintService {
 }
 
 // CreateComplaint создаёт жалобу с проверкой ограничений.
-func (s *ComplaintService) CreateComplaint(userUUID string, categoryID int, message string) (string, error) {
+func (s *ComplaintService) CreateComplaint(ctx context.Context, barcode string, categoryID int, message string) (int, string, error) {
 	// Проверяем, можно ли отправить жалобу
-	canSubmit, err := s.storage.CheckComplaintLimit(userUUID)
+	canSubmit, err := s.storage.CheckComplaintLimit(ctx, barcode)
 	if err != nil {
-		return "", fmt.Errorf("failed to check complaint limit: %w", err)
+		return 0, "", fmt.Errorf("failed to check complaint limit: %w", err)
 	}
 	if !canSubmit {
-		return "", storage.ErrLimitOneComplaintInOneHour
+		return 0, "", storage.ErrLimitOneComplaintInOneHour
 	}
 
 	// Сохраняем жалобу
-	answer, err := s.storage.SaveComplaint(userUUID, categoryID, message)
+	complaintID, answer, err := s.storage.SaveComplaint(ctx, barcode, categoryID, message)
 	if err != nil {
-		return "", fmt.Errorf("failed to save complaint: %w", err)
+		return 0, "", fmt.Errorf("failed to save complaint: %w", err)
 	}
 
-	// Очищаем кеш после изменения БД
-	//redis.Del(ctx, "cache:/complaints")
-	return answer, nil
+	return complaintID, answer, nil
 }
 
 // GetComplaintById получает жалобу по ID
-func (s *ComplaintService) GetComplaintById(complaintID int) (domain.Complaint, error) {
-	complaint, err := s.storage.GetComplaintById(complaintID)
+func (s *ComplaintService) GetComplaintById(ctx context.Context, complaintID int) (domain.Complaint, error) {
+	complaint, err := s.storage.GetComplaintById(ctx, complaintID)
 	if err != nil {
 		return domain.Complaint{}, err
 	}
@@ -49,20 +47,8 @@ func (s *ComplaintService) GetComplaintById(complaintID int) (domain.Complaint, 
 }
 
 // GetAllComplaints получает все жалобы
-func (s *ComplaintService) GetAllComplaints() ([]domain.Complaint, error) {
-	//key := "cache:/complaints"
-	//// Проверяем кеш
-	//cachedData, err := redis.Get(ctx, key).Result()
-	//if err == nil {
-	//	// Данные найдены в кеше, декодируем их
-	//	var complaints []domain.Complaint
-	//	err := json.Unmarshal([]byte(cachedData), &complaints)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	return complaints, nil
-	//}
-	complaints, err := s.storage.GetComplaints()
+func (s *ComplaintService) GetAllComplaints(ctx context.Context) ([]domain.Complaint, error) {
+	complaints, err := s.storage.GetComplaints(ctx)
 	if errors.Is(err, storage.ErrComplaintNotFound) {
 		return nil, storage.ErrComplaintNotFound
 	}
@@ -70,21 +56,22 @@ func (s *ComplaintService) GetAllComplaints() ([]domain.Complaint, error) {
 		return []domain.Complaint{}, err
 	}
 
-	//// Сохраняем в Redis на 5 минут
-	//jsonData, _ := json.Marshal(complaints)
-	//redis.Set(ctx, key, jsonData, 5*time.Minute)
-
 	return complaints, nil
 }
 
 // GetComplaintsByCategoryId получает жалобы по категории
-func (s *ComplaintService) GetComplaintsByCategoryId(categoryId int) ([]domain.Complaint, error) {
-	return s.storage.GetComplaintsByCategoryId(categoryId)
+func (s *ComplaintService) GetComplaintsByCategoryId(ctx context.Context, categoryId int) ([]domain.Complaint, error) {
+	return s.storage.GetComplaintsByCategoryId(ctx, categoryId)
 }
 
 // UpdateComplaintStatus обновляет статус жалобы
-func (s *ComplaintService) UpdateComplaintStatus(complaintID int64, status domain.ComplaintStatus, answer string) error {
-	return s.storage.UpdateComplaintStatus(complaintID, status, answer)
+func (s *ComplaintService) UpdateComplaintStatus(ctx context.Context, complaintID int64, status domain.ComplaintStatus, answer string) error {
+	return s.storage.UpdateComplaintStatus(ctx, complaintID, status, answer)
+}
+
+// UpdateComplaint обновляет жалобу
+func (s *ComplaintService) UpdateComplaint(ctx context.Context, complaintID int64, complaint domain.Complaint) (domain.Complaint, error) {
+	return s.storage.UpdateComplaint(ctx, complaintID, complaint)
 }
 
 // DeleteComplaint удаляет жалобу

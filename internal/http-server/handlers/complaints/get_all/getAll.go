@@ -29,12 +29,12 @@ import (
 func New(ctx context.Context, log *slog.Logger, service *service.ComplaintService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.get_all.New"
+
 		log := log.With(
 			slog.String("op", op),
 			slog.String("url", r.URL.String()))
-		result, err := service.GetAllComplaints()
+		result, err := service.GetAllComplaints(r.Context())
 		log.Info("url", r.URL.String())
-		log.Info("result", result)
 
 		client.Set(ctx, fmt.Sprintf("cache:%s", r.URL.Path), result, 5*time.Minute)
 

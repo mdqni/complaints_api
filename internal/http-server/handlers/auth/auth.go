@@ -30,6 +30,7 @@ func New(log *slog.Logger, admin *service.AdminService) http.HandlerFunc {
 
 		// Генерация JWT
 		token, err := jwt.GenerateJWT(admin)
+		log.Debug(token)
 		if err != nil {
 			log.Error(err.Error())
 			http.Error(w, "Failed to generate token", http.StatusInternalServerError)

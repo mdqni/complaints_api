@@ -7,14 +7,6 @@ import (
 	"fmt"
 )
 
-// // CategoryStorage интерфейс для хранилища категории
-//
-//	type CategoryStorage interface {
-//		CreateCategory(ctx context.Context, category domain.Category) (int64, error)
-//		GetCategoryById(ctx context.Context, categoryID int) (domain.Category, error)
-//		GetCategories(ctx context.Context) ([]domain.Category, error)
-//		DeleteCategoryById(ctx context.Context, id int) error
-//	}
 type CategoryService struct {
 	storage *pg.Storage
 }
@@ -23,7 +15,7 @@ func NewCategoriesService(strg *pg.Storage) *CategoryService {
 	return &CategoryService{storage: strg}
 }
 
-// CreateCategory создаёт жалобу с проверкой ограничений.
+// CreateCategory создаёт категорию
 func (s *CategoryService) CreateCategory(ctx context.Context, category domain.Category) (int64, error) {
 	// Сохраняем жалобу
 	answer, err := s.storage.CreateCategory(ctx, category)
@@ -32,6 +24,16 @@ func (s *CategoryService) CreateCategory(ctx context.Context, category domain.Ca
 	}
 
 	return answer, nil
+}
+
+// UpdateCategory обновляет категорию
+func (s *CategoryService) UpdateCategory(ctx context.Context, category domain.Category) (int, error) {
+	const op = "storage.category.UpdateCategory"
+	id, err := s.storage.UpdateCategory(ctx, category)
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 // GetCategoryById получает жалобу по ID
