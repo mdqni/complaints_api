@@ -18,13 +18,12 @@ import (
 )
 
 // New @Summary Get all complaints
-// @Summary Get all complaints
-// @Description Retrieve all complaints from the database
+// @Description Retrieve all complaints from the database. Caches the result for 5 minutes.
 // @Tags Complaints
 // @Produce json
-// @Success 200 {array} domain.Complaint "List of complaints"
-// @Failure 404 {object} response.Response "No complaints found"
-// @Failure 500 {object} response.Response "Internal error"
+// @Success 200 {array} response.Response "List of all complaints"
+// @Failure 404 {object} response.Response "No complaints found in the database"
+// @Failure 500 {object} response.Response "Internal server error"
 // @Router /complaints [get]
 func New(ctx context.Context, log *slog.Logger, service *service.ComplaintService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -51,6 +50,6 @@ func New(ctx context.Context, log *slog.Logger, service *service.ComplaintServic
 		}
 		log.Info("complaints found")
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, result)
+		render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: result})
 	}
 }

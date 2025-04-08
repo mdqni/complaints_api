@@ -19,22 +19,23 @@ type Request struct {
 	CategoryID int    `json:"category_id" validate:"required"`
 	Barcode    string `json:"barcode"`
 }
-type ComplaintResponse struct {
-	Status int `json:"status"`
-	Data   struct {
-		Answer string `json:"answer"`
-	} `json:"data"`
-}
+
+//type ComplaintResponse struct {
+//	Status int `json:"status"`
+//	Data   struct {
+//		Answer string `json:"answer"`
+//	} `json:"data"`
+//}
 
 // New CreateComplaint godoc
 // @Summary Create a new complaint
-// @Description Create a new complaint for a specific user and category
+// @Description Create a new complaint for a specific user and category. Only one complaint can be submitted per hour for the same user.
 // @Tags Complaints
 // @Accept json
 // @Produce json
-// @Param Request body Request true "Complaint details"
-// @Success 200 {object} ComplaintResponse "Success response"
-// @Failure 400 {object} response.Response "Invalid request"
+// @Param Request body Request true "Complaint details" // Request body with message, category_id, and barcode
+// @Success 200 {object} response.Response "Success response with complaint ID and answer"
+// @Failure 400 {object} response.Response "Invalid request, bad input or validation error"
 // @Failure 429 {object} response.Response "Limit of one complaint per hour exceeded"
 // @Failure 500 {object} response.Response "Internal server error"
 // @Router /complaints [post]
@@ -78,11 +79,10 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			render.JSON(w, r, response.Error("failed to save complaints", http.StatusInternalServerError))
 		}
 		render.Status(r, http.StatusOK)
-		render.JSON(w, r, map[string]interface{}{
-			"data": map[string]interface{}{
-				"id":     complaintID,
-				"answer": answer,
-			},
+		render.JSON(w, r, response.Response{
+			Message:    answer,
+			StatusCode: http.StatusOK,
+			Data:       complaintID,
 		})
 
 	}

@@ -13,14 +13,15 @@ import (
 
 // New GetComplaintsByCategoryId godoc
 // @Summary Get complaints by category ID
-// @Description Retrieve all complaints that belong to a specific category
+// @Description Retrieve all complaints that belong to a specific category based on its unique identifier (Category ID).
 // @Tags Complaints
 // @Accept json
 // @Produce json
-// @Param id path int true "Category ID"
-// @Success 200 {array} domain.Complaint "List of complaints"
-// @Failure 400 {object} response.Response "Invalid category ID"
-// @Failure 500 {object} response.Response "Internal server error"
+// @Param id path int true "Category ID (unique identifier of the category)"
+// @Success 200 {array} domain.Complaint "List of complaints associated with the given category"
+// @Failure 400 {object} response.Response "Invalid category ID format"
+// @Failure 404 {object} response.Response "No complaints found for the given category"
+// @Failure 500 {object} response.Response "Internal server error while fetching complaints"
 // @Router /complaints/category/{id} [get]
 func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +46,6 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		}
 		log.Info("Categories found")
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, result)
+		render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: result})
 	}
 }

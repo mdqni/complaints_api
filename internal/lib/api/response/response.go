@@ -7,17 +7,15 @@ import (
 )
 
 type Response struct {
-	Status  int               `json:"status"` //Message, Ok
-	Message string            `json:"error,omitempty"`
-	Errors  map[string]string `json:"errors,omitempty"`
+	StatusCode int         `json:"statusCode" validate:"required"`
+	Message    string      `json:"message,omitempty"`
+	Data       interface{} `json:"data,omitempty"`
 }
 
-func OK() Response {
-	return Response{Status: 200}
-}
 func Error(msg string, status int) Response {
-	return Response{Status: status, Message: msg}
+	return Response{StatusCode: status, Message: msg}
 }
+
 func ValidationError(err validator.ValidationErrors) Response {
 	var errorMsgs []string
 	for _, err := range err {
@@ -26,12 +24,13 @@ func ValidationError(err validator.ValidationErrors) Response {
 			errorMsgs = append(errorMsgs, fmt.Sprintf("Field %s is a required field", err.Field()))
 		default:
 			errorMsgs = append(errorMsgs, fmt.Sprintf("Field %s is not valid", err.Field()))
-
 		}
-
 	}
 	return Response{
-		Status:  400,
-		Message: strings.Join(errorMsgs, ", "),
+		StatusCode: 400,
+		Message:    "Validation failed",
+		Data: map[string]string{
+			"errors": strings.Join(errorMsgs, ", "),
+		},
 	}
 }

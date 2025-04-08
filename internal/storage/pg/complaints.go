@@ -234,7 +234,7 @@ func (s *Storage) CheckComplaintLimit(ctx context.Context, barcode string) (bool
 
 // DeleteComplaint удаляет жалобу по её ID.
 func (s *Storage) DeleteComplaint(ctx context.Context, id int) error {
-	const op = "storage.postgres.DeleteComplaint"
+	const op = "storage.postgres.DeleteComplaintById"
 
 	query := `DELETE FROM complaints WHERE id = $1`
 	_, err := s.db.Exec(ctx, query, id)

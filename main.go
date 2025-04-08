@@ -147,7 +147,7 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 		//Category
 		r.Post("/categories", categoriesCreate.New(ctx, log, _categoryService, client)) //Создание категории
 		r.Put("/categories/{id}", updateCategory.New(ctx, log, _categoryService, client))
-		r.Delete("/categories/{id}", deleteCategoryById.New(log, storage)) //Удалить категории по ID
+		r.Delete("/categories/{id}", deleteCategoryById.New(ctx, log, _categoryService, client)) //Удалить категории по ID
 	})
 }
 

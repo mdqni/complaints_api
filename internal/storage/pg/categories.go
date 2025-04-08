@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"complaint_server/internal/domain"
 )
@@ -86,7 +87,11 @@ func (s *Storage) DeleteCategoryById(ctx context.Context, index int) error {
 	query := `DELETE FROM categories WHERE id = $1`
 	_, err := s.db.Exec(ctx, query, index)
 	if err != nil {
-		return fmt.Errorf("%s: failed to delete category: %w", op, err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return storage.ErrHasRelatedRows
+		}
+		return fmt.Errorf("не удалось удалить категорию: %w", err)
 	}
 	return nil
 }

@@ -10,9 +10,10 @@ import (
 
 func NewClient(ctx context.Context, cfg *config.Config, log *slog.Logger) (*redis.Client, error) {
 	db := redis.NewClient(&redis.Options{
-		Addr:         "127.0.0.1:6379",
+		Addr:         "34.89.141.175:1006",
+		Username:     "default",
 		DB:           0,
-		Password:     "",
+		Password:     "Aitusa2025!",
 		MaxRetries:   cfg.MaxRetries,
 		DialTimeout:  cfg.DialTimeout,
 		ReadTimeout:  cfg.RedisClient.Timeout,

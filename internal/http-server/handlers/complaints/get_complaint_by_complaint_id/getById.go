@@ -15,16 +15,16 @@ import (
 
 // New GetComplaintById godoc
 // @Summary Get a complaint by ID
-// @Description Retrieve a complaint using its unique identifier
+// @Description Retrieve a complaint using its unique identifier. The ID must be an integer that corresponds to a valid complaint in the database.
 // @Tags Complaints
 // @Accept json
 // @Produce json
-// @Param id path int true "Complaint ID"
+// @Param id path int true "Complaint ID (unique identifier of the complaint)"
 // @Success 200 {object} domain.Complaint "Complaint details"
-// @Failure 400 {object} response.Response "Invalid request"
-// @Failure 404 {object} response.Response "Complaint not found"
+// @Failure 400 {object} response.Response "Invalid request, incorrect ID format"
+// @Failure 404 {object} response.Response "Complaint with the given ID not found"
 // @Failure 500 {object} response.Response "Internal server error"
-// @Router /{id} [get]
+// @Router /complaints/{id} [get]
 func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.get_by_complaint_id.New"
@@ -50,6 +50,6 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		}
 		log.Info("complaints found")
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, result)
+		render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: result})
 	}
 }

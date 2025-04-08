@@ -14,16 +14,14 @@ import (
 	"strconv"
 )
 
-// New DeleteComplaint godoc
-// @Summary Delete a complaint
-// @Description Delete a complaint by its ID
+// New @Summary Delete a complaint
+// @Description Delete a complaint by its ID. If the complaint is not found, an error is returned.
 // @Tags Complaints
 // @Param id path int true "Complaint ID"
 // @Success 200 {object} response.Response "Complaint successfully deleted"
-// @Failure 400 {object} response.Response "Invalid request"
-// @Failure 404 {object} response.Response "Complaint not found"
+// @Failure 400 {object} response.Response "Invalid request or complaint not found"
 // @Failure 500 {object} response.Response "Internal server error"
-// @Router /complaint/{id} [delete]
+// @Router /complaints/{id} [delete]
 func New(log *slog.Logger, service *service.ComplaintService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.delete.New"
@@ -45,7 +43,7 @@ func New(log *slog.Logger, service *service.ComplaintService, client *redis.Clie
 		if err != nil {
 			return
 		}
-		err = service.DeleteComplaint(ctx, atoi)
+		err = service.DeleteComplaintById(ctx, atoi)
 		if errors.Is(err, storage.ErrComplaintNotFound) {
 			log.Error("complaint not found", sl.Err(err))
 			w.WriteHeader(http.StatusBadRequest)
@@ -60,7 +58,6 @@ func New(log *slog.Logger, service *service.ComplaintService, client *redis.Clie
 		}
 		client.Del(ctx, "cache:/complaints")
 		log.Info("complaint deleted")
-		render.JSON(w, r, response.OK())
-
+		render.JSON(w, r, response.Response{StatusCode: http.StatusOK})
 	}
 }

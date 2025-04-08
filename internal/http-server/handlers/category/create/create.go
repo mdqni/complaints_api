@@ -22,16 +22,16 @@ type Request struct {
 	Answer      string `json:"answer" validate:"required"`
 }
 
-// New @Summary      Создать категорию
-// @Description  Создает новую категорию жалоб.
-// @Tags         Categories
-// @Accept       json
-// @Produce      json
-// @Param        request  body  Request  true  "Данные категории"
-// @Success      200  {object}  response.Response
-// @Failure      400  {object}  response.Response  "Ошибка валидации или декодирования"
-// @Failure      500  {object}  response.Response  "Ошибка сервера"
-// @Router       /category [post]
+// New @Summary Создать категорию
+// @Description Создает новую категорию жалоб с необходимыми данными: название, описание и ответ.
+// @Tags Categories
+// @Accept json
+// @Produce json
+// @Param request body Request true "Данные категории"
+// @Success 200 {object} response.Response "Категория успешно создана"
+// @Failure 400 {object} response.Response "Ошибка валидации или декодирования данных"
+// @Failure 500 {object} response.Response "Ошибка сервера"
+// @Router /category [post]
 func New(ctx context.Context, log *slog.Logger, service *service.CategoryService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.category.register.New"
@@ -69,6 +69,6 @@ func New(ctx context.Context, log *slog.Logger, service *service.CategoryService
 		log.Info("category saved on "+strconv.Itoa(int(categoryID))+" ID", slog.Int64("id", categoryID))
 		client.Del(ctx, "cache:/categories")
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, response.Response{Status: http.StatusOK})
+		render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: categoryID})
 	}
 }

@@ -9,14 +9,14 @@ import (
 	"net/http"
 )
 
-// New @Summary      Получить все категории
-// @Description  Возвращает список всех категорий жалоб.
-// @Tags         Categories
-// @Accept       json
-// @Produce      json
-// @Success      200  {array}   domain.Category
-// @Failure      500  {object}  response.Response  "Внутренняя ошибка сервера"
-// @Router       /categories [get]
+// New @Summary Получить все категории
+// @Description Возвращает список всех категорий жалоб, доступных в системе.
+// @Tags Categories
+// @Accept json
+// @Produce json
+// @Success 200 {array} domain.Category "List of all categories"
+// @Failure 500 {object} response.Response "Internal server error while fetching categories"
+// @Router /categories [get]
 func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.category.get_all.New"
@@ -35,6 +35,6 @@ func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 		}
 		log.Info("Categories found")
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, result)
+		render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: result})
 	}
 }

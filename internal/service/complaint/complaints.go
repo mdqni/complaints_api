@@ -74,7 +74,7 @@ func (s *ComplaintService) UpdateComplaint(ctx context.Context, complaintID int6
 	return s.storage.UpdateComplaint(ctx, complaintID, complaint)
 }
 
-// DeleteComplaint удаляет жалобу
-func (s *ComplaintService) DeleteComplaint(ctx context.Context, complaintID int) error {
+// DeleteComplaintById удаляет жалобу
+func (s *ComplaintService) DeleteComplaintById(ctx context.Context, complaintID int) error {
 	return s.storage.DeleteComplaint(ctx, complaintID)
 }

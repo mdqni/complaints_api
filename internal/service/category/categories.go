@@ -54,7 +54,7 @@ func (s *CategoryService) GetCategories(ctx context.Context) ([]domain.Category,
 	return categories, nil
 }
 
-// DeleteComplaint удаляет жалобу
+// DeleteCategoryById  удаляет жалобу
 func (s *CategoryService) DeleteCategoryById(ctx context.Context, complaintID int) error {
 	return s.storage.DeleteCategoryById(ctx, complaintID)
 }

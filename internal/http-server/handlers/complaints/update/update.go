@@ -18,14 +18,14 @@ type Request struct {
 	Complaint domain.Complaint `json:"data"`
 }
 
-// New UpdateComplaint godoc
-// @Summary Update a complaint
-// @Description Update a complaint
+// New @Summary Update a complaint
+// @Description Updates an existing complaint based on the provided complaint ID and new data.
 // @Tags Complaints
 // @Accept json
 // @Produce json
+// @Param id path int true "Complaint ID"
 // @Param request body Request true "Complaint resolution details"
-// @Success 200 {object} response.Response "Complaint updated successfully"
+// @Success 200 {object} Request "Complaint updated successfully"
 // @Failure 400 {object} response.Response "Invalid request"
 // @Failure 404 {object} response.Response "Complaint not found"
 // @Failure 500 {object} response.Response "Internal server error"
@@ -46,7 +46,7 @@ func New(log *slog.Logger, service *service.ComplaintService, client *redis.Clie
 		id, err := strconv.ParseInt(complaintID, 10, 64)
 		if err != nil {
 			log.Error("invalid complaint ID", sl.Err(err))
-			render.JSON(w, r, response.Response{Status: http.StatusOK, Message: "invalid complaint ID"})
+			render.JSON(w, r, response.Response{StatusCode: http.StatusBadRequest, Message: "invalid complaint ID"})
 			return
 		}
 
@@ -56,7 +56,7 @@ func New(log *slog.Logger, service *service.ComplaintService, client *redis.Clie
 
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err))
-			render.JSON(w, r, response.Response{Message: "failed to decode request", Status: http.StatusBadRequest})
+			render.JSON(w, r, response.Response{Message: "failed to decode request", StatusCode: http.StatusBadRequest})
 			return
 		}
 		log.Info("request body decoded", slog.Any("request", req))
@@ -66,7 +66,7 @@ func New(log *slog.Logger, service *service.ComplaintService, client *redis.Clie
 		complaint, err := service.UpdateComplaint(ctx, id, req.Complaint)
 		if err != nil {
 			log.Error("failed to update complaint", sl.Err(err))
-			render.JSON(w, r, response.Response{Message: "failed to update complaint", Status: http.StatusInternalServerError})
+			render.JSON(w, r, response.Response{Message: "failed to update complaint", StatusCode: http.StatusInternalServerError})
 			return
 		}
 
@@ -77,12 +77,8 @@ func New(log *slog.Logger, service *service.ComplaintService, client *redis.Clie
 		}
 		w.WriteHeader(http.StatusOK)
 		// Send success response
-		render.JSON(w, r, map[string]interface{}{
-			"data": map[string]interface{}{
-				"id":  complaintID,
-				"new": complaint,
-			},
-		})
-
+		render.JSON(w, r,
+			response.Response{Message: complaintID, StatusCode: http.StatusOK, Data: complaint},
+		)
 	}
 }

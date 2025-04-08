@@ -22,16 +22,16 @@ type Request struct {
 	Answer      string `json:"answer" validate:"required"`
 }
 
-// New @Summary      Обновить категорию
-// @Description  Обновляет категорию жалоб.
-// @Tags         Categories
-// @Accept       json
-// @Produce      json
-// @Param        request  body  Request  true  "Данные категории"
-// @Success      200  {object}  response.Response
-// @Failure      400  {object}  response.Response  "Ошибка валидации или декодирования"
-// @Failure      500  {object}  response.Response  "Ошибка сервера"
-// @Router       /category [post]
+// New @Summary Обновить категорию
+// @Description Обновляет информацию о категории жалоб. Требуется предоставить ID категории и новые данные (название, описание и ответ).
+// @Tags Categories
+// @Accept json
+// @Produce json
+// @Param request body Request true "Данные категории"
+// @Success 200 {object} response.Response "Категория успешно обновлена"
+// @Failure 400 {object} response.Response "Ошибка валидации или декодирования данных"
+// @Failure 500 {object} response.Response "Ошибка сервера"
+// @Router /category [put]
 func New(ctx context.Context, log *slog.Logger, service *service.CategoryService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.category.update.New"
@@ -69,6 +69,9 @@ func New(ctx context.Context, log *slog.Logger, service *service.CategoryService
 		}
 		client.Del(ctx, "cache:/categories")
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, response.Response{Status: http.StatusOK})
+		render.JSON(w, r, response.Response{
+			StatusCode: http.StatusOK,
+			Data:       map[string]interface{}{"id": id},
+		})
 	}
 }

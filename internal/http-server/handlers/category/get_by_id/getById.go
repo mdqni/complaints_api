@@ -11,14 +11,16 @@ import (
 	"strconv"
 )
 
-// New @Summary      Получить категорию по id
-// @Description  Возвращает категорию по id.
-// @Tags         Categories
-// @Accept       json
-// @Produce      json
-// @Success      200  {object}   domain.Category
-// @Failure      500  {object}  response.Response  "Внутренняя ошибка сервера"
-// @Router       /categories/{id} [get]
+// New @Summary Получить категорию по ID
+// @Description Возвращает категорию по уникальному идентификатору (ID).
+// @Tags Categories
+// @Accept json
+// @Produce json
+// @Param id path int true "Category ID (unique identifier of the category)"
+// @Success 200 {object} domain.Category "Category details"
+// @Failure 400 {object} response.Response "Invalid ID format"
+// @Failure 500 {object} response.Response "Internal server error while fetching the category"
+// @Router /categories/{id} [get]
 func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.category.get_all.New"
@@ -42,6 +44,6 @@ func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 		}
 		log.Info("Categories found")
 		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, result)
+		render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: result})
 	}
 }
