@@ -128,7 +128,7 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 		r.Get("/{id}/complaints", get_complaints_by_category_id.New(log, _complaintService)) //Получить компл по категории айди
 	})
 
-	router.Route("docs", func(r chi.Router) {
+	router.Route("/docs", func(r chi.Router) {
 		r.Use(middleware.BasicAuth("admin", map[string]string{
 			cfg.HTTPServer.User: cfg.HTTPServer.Password,
 		}))
