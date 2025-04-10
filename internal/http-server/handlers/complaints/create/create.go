@@ -46,44 +46,67 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			slog.String("op", op),
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
+
 		var req Request
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err)) //Пишем в лог
+			render.JSON(w, r, response.Response{
+				Message:    "failed to decode request",
+				StatusCode: http.StatusBadRequest,
+				Data:       nil,
+			})
 			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.Error("failed to decode request", http.StatusBadRequest)) //Возвращаем ошибку
 			return
 		}
+
 		log.Info("request body decoded", slog.Any("request", req))
 		if err := validator.New().Struct(req); err != nil {
 			var validationErrors validator.ValidationErrors
 			errors.As(err, &validationErrors)
 			log.Error("failed to validate request", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "validation error",
+				StatusCode: http.StatusBadRequest,
+				Data:       validationErrors,
+			})
 			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.ValidationError(validationErrors))
 			return
 		}
+
 		message := req.Message
-		categoryID := req.CategoryID //Фронт должен преобразовать
+		categoryID := req.CategoryID
 		barcode := req.Barcode
 		complaintID, answer, err := service.CreateComplaint(r.Context(), barcode, categoryID, message)
+
 		if errors.Is(err, storage.ErrLimitOneComplaintInOneHour) {
-			log.Error("failed to register complaints", sl.Err(err))
+			log.Error("failed to register complaint due to rate limit", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "You can only submit one complaint per hour. Please try again later.",
+				StatusCode: http.StatusTooManyRequests,
+				Data:       nil,
+			})
 			w.WriteHeader(http.StatusTooManyRequests)
-			render.JSON(w, r, response.Error("You can only submit one complaint per hour. Please try again later.", http.StatusTooManyRequests))
 			return
 		}
+
 		if err != nil {
-			log.Error("failed to register complaints", sl.Err(err))
+			log.Error("failed to register complaint", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "failed to save complaint",
+				StatusCode: http.StatusInternalServerError,
+				Data:       nil,
+			})
 			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("failed to save complaints", http.StatusInternalServerError))
+			return
 		}
+
+		// Успешный ответ
 		render.Status(r, http.StatusOK)
 		render.JSON(w, r, response.Response{
 			Message:    answer,
 			StatusCode: http.StatusOK,
 			Data:       complaintID,
 		})
-
 	}
 }

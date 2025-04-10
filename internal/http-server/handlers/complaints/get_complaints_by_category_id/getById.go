@@ -32,20 +32,31 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 
 		categoryId, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
-			log.Error(op, sl.Err(err))
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.Error("invalid category id", http.StatusBadRequest))
-		}
-		result, err := service.GetComplaintsByCategoryId(r.Context(), categoryId)
-
-		if err != nil {
-			log.Error(op, sl.Err(err))
-			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("internal error", http.StatusInternalServerError))
+			log.Error("incorrect category id format", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "invalid category id format",
+				StatusCode: http.StatusBadRequest,
+				Data:       nil,
+			})
 			return
 		}
-		log.Info("Categories found")
-		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: result})
+
+		result, err := service.GetComplaintsByCategoryId(r.Context(), categoryId)
+		if err != nil {
+			log.Error("failed to get complaints", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "no complaints found for the given category",
+				StatusCode: http.StatusNotFound,
+				Data:       nil,
+			})
+			return
+		}
+
+		log.Info("Complaints found for category", slog.Int("category_id", categoryId))
+		render.JSON(w, r, response.Response{
+			Message:    "Complaints fetched successfully",
+			StatusCode: http.StatusOK,
+			Data:       result,
+		})
 	}
 }

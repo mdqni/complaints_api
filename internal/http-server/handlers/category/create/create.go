@@ -13,7 +13,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"log/slog"
 	"net/http"
-	"strconv"
 )
 
 type Request struct {
@@ -34,41 +33,68 @@ type Request struct {
 // @Router /category [post]
 func New(ctx context.Context, log *slog.Logger, service *service.CategoryService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.category.register.New"
-		log = log.With(
+		const op = "handlers.category.create.New"
+		log := log.With(
 			slog.String("op", op),
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
+
 		var req Request
-		err := render.DecodeJSON(r.Body, &req)
-		if err != nil {
-			log.Error("failed to decode request body", sl.Err(err)) //Пишем в лог
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.Error("failed to decode request", http.StatusBadRequest)) //Возвращаем ошибку
+		if err := render.DecodeJSON(r.Body, &req); err != nil {
+			log.Error("failed to decode request body", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "Failed to decode request body",
+				StatusCode: http.StatusBadRequest,
+				Data:       nil,
+			})
 			return
 		}
 		log.Info("request body decoded", slog.Any("request", req))
+
+		// Валидация данных
 		if err := validator.New().Struct(req); err != nil {
 			var validationErrors validator.ValidationErrors
-			errors.As(err, &validationErrors)
-			log.Error("failed to validate request", sl.Err(err))
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.ValidationError(validationErrors))
+			if errors.As(err, &validationErrors) {
+				log.Error("validation failed", sl.Err(err))
+				render.JSON(w, r, response.Response{
+					Message:    "Validation failed",
+					StatusCode: http.StatusBadRequest,
+					Data:       validationErrors,
+				})
+				return
+			}
+			log.Error("unknown validation error", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "Unknown validation error",
+				StatusCode: http.StatusBadRequest,
+				Data:       nil,
+			})
 			return
 		}
-		description := req.Description
-		categoryName := req.Title
-		answer := req.Answer
 
-		categoryID, err := service.CreateCategory(r.Context(), domain.Category{Title: categoryName, Description: description, Answer: answer})
+		// Создание категории
+		categoryID, err := service.CreateCategory(r.Context(), domain.Category{
+			Title:       req.Title,
+			Description: req.Description,
+			Answer:      req.Answer,
+		})
 		if err != nil {
 			log.Error("failed to save category", sl.Err(err))
-			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("failed to save complaints", http.StatusInternalServerError))
+			render.JSON(w, r, response.Response{
+				Message:    "Failed to save category",
+				StatusCode: http.StatusInternalServerError,
+				Data:       nil,
+			})
+			return
 		}
-		log.Info("category saved on "+strconv.Itoa(int(categoryID))+" ID", slog.Int64("id", categoryID))
+
+		log.Info("category saved", slog.Int64("id", categoryID))
 		client.Del(ctx, "cache:/categories")
-		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: categoryID})
+
+		render.JSON(w, r, response.Response{
+			Message:    "Category created successfully",
+			StatusCode: http.StatusOK,
+			Data:       categoryID,
+		})
 	}
 }

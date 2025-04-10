@@ -31,47 +31,70 @@ type Request struct {
 // @Success 200 {object} response.Response "Категория успешно обновлена"
 // @Failure 400 {object} response.Response "Ошибка валидации или декодирования данных"
 // @Failure 500 {object} response.Response "Ошибка сервера"
-// @Router /category [put]
+// @Router /category/{id} [put]
 func New(ctx context.Context, log *slog.Logger, service *service.CategoryService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.category.update.New"
-		log = log.With(
+		log := log.With(
 			slog.String("op", op),
 			slog.String("request_id", middleware.GetReqID(r.Context())),
 		)
+
 		var req Request
-		err := render.DecodeJSON(r.Body, &req)
-		if err != nil {
-			log.Error("failed to decode request body", sl.Err(err)) //Пишем в лог
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.Error("failed to decode request", http.StatusBadRequest)) //Возвращаем ошибку
+		if err := render.DecodeJSON(r.Body, &req); err != nil {
+			log.Error("failed to decode request body", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "Failed to decode request body",
+				StatusCode: http.StatusBadRequest,
+				Data:       nil,
+			})
 			return
 		}
 		log.Info("request body decoded", slog.Any("request", req))
+
 		if err := validator.New().Struct(req); err != nil {
 			var validationErrors validator.ValidationErrors
-			errors.As(err, &validationErrors)
-			log.Error("failed to validate request", sl.Err(err))
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.ValidationError(validationErrors))
+			if errors.As(err, &validationErrors) {
+				log.Error("validation failed", sl.Err(err))
+				render.JSON(w, r, response.Response{
+					Message:    "Validation failed",
+					StatusCode: http.StatusBadRequest,
+					Data:       validationErrors,
+				})
+				return
+			}
+			log.Error("unknown validation error", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "Unknown validation error",
+				StatusCode: http.StatusBadRequest,
+				Data:       nil,
+			})
 			return
 		}
-		log.Info("Req: ", req)
-		description := req.Description
-		categoryName := req.Title
-		answer := req.Answer
-		id := req.Id
-		_, err = service.UpdateCategory(r.Context(), domain.Category{ID: id, Title: categoryName, Description: description, Answer: answer})
+
+		_, err := service.UpdateCategory(r.Context(), domain.Category{
+			ID:          req.Id,
+			Title:       req.Title,
+			Description: req.Description,
+			Answer:      req.Answer,
+		})
 		if err != nil {
-			log.Error(err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("failed to update category", http.StatusInternalServerError))
+			log.Error("failed to update category", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "Failed to update category",
+				StatusCode: http.StatusInternalServerError,
+				Data:       nil,
+			})
+			return
 		}
+
+		// Очистка кэша
 		client.Del(ctx, "cache:/categories")
-		w.WriteHeader(http.StatusOK)
+
 		render.JSON(w, r, response.Response{
+			Message:    "Category updated successfully",
 			StatusCode: http.StatusOK,
-			Data:       map[string]interface{}{"id": id},
+			Data:       map[string]interface{}{"id": req.Id},
 		})
 	}
 }

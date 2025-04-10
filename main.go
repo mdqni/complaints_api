@@ -54,7 +54,7 @@ const (
 // @contact.email	quanaimadi@.gmail.com
 // @license.name	MIT
 // @license.url	https://opensource.org/licenses/MIT
-// @host			localhost:8082
+// @host			https://complaints-api.yeunikey.dev
 // @BasePath		/
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -86,6 +86,7 @@ func setupRedis(ctx context.Context, cfg *config.Config, log *slog.Logger) *redi
 
 func setupStorage(connString string, log *slog.Logger) *pg.Storage {
 	storage, err := pg.New(connString)
+	log.Info("setup/creating storage")
 	if err != nil {
 		log.Error("error creating db", sl.Err(err))
 		os.Exit(1)
@@ -127,11 +128,12 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 		r.Get("/{id}/complaints", get_complaints_by_category_id.New(log, _complaintService)) //Получить компл по категории айди
 	})
 
-	router.Route("/docs", func(r chi.Router) {
-		r.Use(middleware.BasicAuth("docs", map[string]string{
+	router.Route("docs", func(r chi.Router) {
+		r.Use(middleware.BasicAuth("admin", map[string]string{
 			cfg.HTTPServer.User: cfg.HTTPServer.Password,
 		}))
 		r.Get("/*", httpSwagger.WrapHandler)
+
 	})
 	router.Route("/login", func(r chi.Router) {
 		r.Post("/*", auth.New(log, _adminService))
@@ -141,8 +143,8 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 
 		r.Use(admin_only.AdminOnlyMiddleware(log))
 		//Complaint
-		r.Put("/complaints/{id}", update.New(log, _complaintService, client))
-		r.Delete("/complaints/{id}", deleteComplaint.New(log, _complaintService, client)) //Удалить компл
+		r.Put("/complaints/{id}", update.New(ctx, log, _complaintService, client))
+		r.Delete("/complaints/{id}", deleteComplaint.New(ctx, log, _complaintService, client)) //Удалить компл
 
 		//Category
 		r.Post("/categories", categoriesCreate.New(ctx, log, _categoryService, client)) //Создание категории

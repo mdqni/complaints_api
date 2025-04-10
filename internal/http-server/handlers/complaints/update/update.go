@@ -5,6 +5,8 @@ import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
 	"complaint_server/internal/service/complaint"
+	"context"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
@@ -30,7 +32,7 @@ type Request struct {
 // @Failure 404 {object} response.Response "Complaint not found"
 // @Failure 500 {object} response.Response "Internal server error"
 // @Router /complaints/{id} [put]
-func New(log *slog.Logger, service *service.ComplaintService, client *redis.Client) http.HandlerFunc {
+func New(context context.Context, log *slog.Logger, service *service.ComplaintService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.update.New"
 
@@ -76,6 +78,7 @@ func New(log *slog.Logger, service *service.ComplaintService, client *redis.Clie
 			log.Error("failed to delete cache", sl.Err(err))
 		}
 		w.WriteHeader(http.StatusOK)
+		client.Del(context, fmt.Sprintf("cache:/complaints/%d", req.Complaint.ID))
 		// Send success response
 		render.JSON(w, r,
 			response.Response{Message: complaintID, StatusCode: http.StatusOK, Data: complaint},

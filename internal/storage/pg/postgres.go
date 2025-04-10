@@ -47,7 +47,7 @@ func New(connString string) (*Storage, error) {
         id SERIAL PRIMARY KEY,
         barcode VARCHAR(50) UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
-        role VARCHAR(20) NOT NULL DEFAULT 'auth',
+        role VARCHAR(20) NOT NULL DEFAULT 'admin',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
 	}
 

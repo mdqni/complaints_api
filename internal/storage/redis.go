@@ -20,7 +20,6 @@ func NewClient(ctx context.Context, cfg *config.Config, log *slog.Logger) (*redi
 		WriteTimeout: cfg.RedisClient.Timeout,
 	})
 	log.Info(db.String())
-
 	if err := db.Ping(ctx).Err(); err != nil {
 		log.Error("failed to connect to redis server", sl.Err(err))
 		return nil, err

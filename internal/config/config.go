@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"github.com/ilyakaznacheev/cleanenv"
 	"log"
 	"os"
@@ -32,21 +31,11 @@ type HTTPServer struct {
 }
 
 func MustLoad() *Config {
-	defaultConfigPath := "./config/local.yaml"
-	if err := os.Setenv("CONFIG_PATH", defaultConfigPath); err != nil {
-		fmt.Println("Message setting environment variable:", err)
-		return nil
-	}
-	if err := os.Setenv("CGO_ENABLED", "1"); err != nil {
-		fmt.Println("Message setting environment variable:", err)
-		return nil
-	}
 	configPath := os.Getenv("CONFIG_PATH")
 	if configPath == "" {
-		log.Fatal("CONFIG_PATH is not set")
+		configPath = "./config/local.yaml"
 	}
 
-	//check if fileExist
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		log.Fatalf("CONFIG_PATH does not exist: %s", configPath)
 	}

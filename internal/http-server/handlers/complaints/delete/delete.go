@@ -5,7 +5,9 @@ import (
 	"complaint_server/internal/lib/logger/sl"
 	"complaint_server/internal/service/complaint"
 	"complaint_server/internal/storage"
+	"context"
 	"errors"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/redis/go-redis/v9"
@@ -22,11 +24,9 @@ import (
 // @Failure 400 {object} response.Response "Invalid request or complaint not found"
 // @Failure 500 {object} response.Response "Internal server error"
 // @Router /complaints/{id} [delete]
-func New(log *slog.Logger, service *service.ComplaintService, client *redis.Client) http.HandlerFunc {
+func New(context context.Context, log *slog.Logger, service *service.ComplaintService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.delete.New"
-
-		ctx := r.Context()
 		log := log.With(
 			slog.String("op", op),
 			slog.String("url", r.URL.String()))
@@ -34,30 +34,54 @@ func New(log *slog.Logger, service *service.ComplaintService, client *redis.Clie
 		id := chi.URLParam(r, "id")
 		if id == "" {
 			log.Info("id can not be empty")
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.Error("invalid request", http.StatusBadRequest))
-
+			render.JSON(w, r, response.Response{
+				Message:    "Complaint ID is required",
+				StatusCode: http.StatusBadRequest,
+				Data:       nil,
+			})
 			return
 		}
+
 		atoi, err := strconv.Atoi(id)
 		if err != nil {
+			log.Error("invalid complaint ID format", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "Invalid complaint ID format",
+				StatusCode: http.StatusBadRequest,
+				Data:       nil,
+			})
 			return
 		}
-		err = service.DeleteComplaintById(ctx, atoi)
+
+		err = service.DeleteComplaintById(r.Context(), atoi)
 		if errors.Is(err, storage.ErrComplaintNotFound) {
 			log.Error("complaint not found", sl.Err(err))
-			w.WriteHeader(http.StatusBadRequest)
-			render.JSON(w, r, response.Error("complaint not found", http.StatusBadRequest))
+			render.JSON(w, r, response.Response{
+				Message:    "Complaint not found",
+				StatusCode: http.StatusNotFound,
+				Data:       nil,
+			})
 			return
 		}
+
 		if err != nil {
-			log.Info("failed to delete complaint", sl.Err(err))
-			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("internal error", http.StatusBadRequest))
+			log.Error("failed to delete complaint", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "Internal error while deleting complaint",
+				StatusCode: http.StatusInternalServerError,
+				Data:       nil,
+			})
 			return
 		}
-		client.Del(ctx, "cache:/complaints")
-		log.Info("complaint deleted")
-		render.JSON(w, r, response.Response{StatusCode: http.StatusOK})
+
+		client.Del(r.Context(), "cache:/complaints")
+		log.Info("complaint successfully deleted")
+		client.Del(context, fmt.Sprintf("cache:/complaints/%d", atoi))
+		// Успешный ответ
+		render.JSON(w, r, response.Response{
+			Message:    "Complaint successfully deleted",
+			StatusCode: http.StatusOK,
+			Data:       nil,
+		})
 	}
 }

@@ -30,11 +30,20 @@ func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 		if err != nil {
 			log.Error(op, sl.Err(err))
 			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("internal error", http.StatusInternalServerError))
+			render.JSON(w, r, response.Response{
+				Message:    "internal error",
+				StatusCode: http.StatusInternalServerError,
+				Data:       nil,
+			})
 			return
 		}
+
 		log.Info("Categories found")
-		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: result})
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		render.JSON(w, r, response.Response{
+			Message:    "Categories fetched successfully",
+			StatusCode: http.StatusOK,
+			Data:       result,
+		})
 	}
 }

@@ -23,27 +23,39 @@ import (
 // @Router /categories/{id} [get]
 func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.category.get_all.New"
+		const op = "handlers.category.get_by_id.New"
 		log := log.With(
 			slog.String("op", op),
 			slog.String("url", r.URL.String()))
 		ctx := r.Context()
+
 		id, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
-			log.Error("incorrect id on params", sl.Err(err))
-			render.JSON(w, r, response.Error("incorrect id on params", http.StatusBadRequest))
+			log.Error("incorrect id in params", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "incorrect id in params",
+				StatusCode: http.StatusBadRequest,
+				Data:       nil,
+			})
 			return
 		}
-		result, err := service.GetCategoryById(ctx, id)
 
+		result, err := service.GetCategoryById(ctx, id)
 		if err != nil {
 			log.Error(op, sl.Err(err))
-			w.WriteHeader(http.StatusInternalServerError)
-			render.JSON(w, r, response.Error("internal error", http.StatusInternalServerError))
+			render.JSON(w, r, response.Response{
+				Message:    "internal error",
+				StatusCode: http.StatusInternalServerError,
+				Data:       nil,
+			})
 			return
 		}
-		log.Info("Categories found")
-		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: result})
+
+		log.Info("Category found", slog.Int("category_id", id))
+		render.JSON(w, r, response.Response{
+			Message:    "Category fetched successfully",
+			StatusCode: http.StatusOK,
+			Data:       result,
+		})
 	}
 }

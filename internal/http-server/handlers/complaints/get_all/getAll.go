@@ -8,13 +8,11 @@ import (
 	"context"
 	_ "database/sql"
 	"errors"
-	"fmt"
 	"github.com/go-chi/render"
 	"github.com/redis/go-redis/v9"
 	_ "github.com/swaggo/http-swagger"
 	"log/slog"
 	"net/http"
-	"time"
 )
 
 // New @Summary Get all complaints
@@ -35,19 +33,18 @@ func New(ctx context.Context, log *slog.Logger, service *service.ComplaintServic
 		result, err := service.GetAllComplaints(r.Context())
 		log.Info("url", r.URL.String())
 
-		client.Set(ctx, fmt.Sprintf("cache:%s", r.URL.Path), result, 5*time.Minute)
-
 		if errors.Is(err, storage.ErrComplaintNotFound) {
 			log.Error(op, sl.Err(err))
 			w.WriteHeader(http.StatusOK)
-			render.JSON(w, r, nil)
+			render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: nil, Message: storage.ErrComplaintNotFound.Error()})
 			return
 		}
 		if err != nil {
 			log.Error(op, sl.Err(err))
-			render.JSON(w, r, response.Error("internal error", http.StatusInternalServerError))
+			render.JSON(w, r, response.Response{StatusCode: http.StatusInternalServerError, Data: nil})
 			return
 		}
+
 		log.Info("complaints found")
 		w.WriteHeader(http.StatusOK)
 		render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: result})
