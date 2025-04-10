@@ -45,5 +45,6 @@ func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 			StatusCode: http.StatusOK,
 			Data:       result,
 		})
+		log.Info("result: ", result[0])
 	}
 }

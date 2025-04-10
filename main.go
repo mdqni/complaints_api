@@ -122,7 +122,7 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 		r.Get("/{id}", get_complaint_by_complaint_id.New(log, _complaintService))                                            // Получить компл по айди
 	})
 	router.Route("/categories", func(r chi.Router) {
-		r.Use(cache.CacheMiddleware(client, 3*time.Minute, log))
+		r.Use(cache.CacheMiddleware(client, time.Minute*1, log))
 		r.Get("/", categoriesGetAll.New(log, _categoryService))
 		r.Get("/{id}", categories_get_by_id.New(log, _categoryService))
 		r.Get("/{id}/complaints", get_complaints_by_category_id.New(log, _complaintService)) //Получить компл по категории айди

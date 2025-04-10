@@ -21,7 +21,7 @@ func CacheMiddleware(redis *redis.Client, ttl time.Duration, log *slog.Logger) f
 			cached, err := redis.Get(ctx, key).Result()
 			if err == nil {
 				log.Info("Cache hit", slog.String("key", key))
-				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte(cached))
 				return
@@ -29,10 +29,10 @@ func CacheMiddleware(redis *redis.Client, ttl time.Duration, log *slog.Logger) f
 
 			recorder := &responseRecorder{ResponseWriter: w, body: new(bytes.Buffer)}
 			next.ServeHTTP(recorder, r)
+			contentType := recorder.Header().Get("Content-Type")
 
-			if recorder.status == http.StatusOK {
-				cachedData := recorder.body.String()
-
+			if recorder.status == http.StatusOK && contentType == "application/json; charset=utf-8" {
+				cachedData := recorder.body.Bytes()
 				err := redis.Set(ctx, key, cachedData, ttl).Err()
 				if err != nil {
 					log.Error("Failed to set cache", sl.Err(err))
