@@ -6,11 +6,9 @@ import (
 	"complaint_server/internal/service/complaint"
 	"complaint_server/internal/storage"
 	"context"
-	_ "database/sql"
+	"encoding/json"
 	"errors"
-	"github.com/go-chi/render"
 	"github.com/redis/go-redis/v9"
-	_ "github.com/swaggo/http-swagger"
 	"log/slog"
 	"net/http"
 )
@@ -27,26 +25,41 @@ func New(ctx context.Context, log *slog.Logger, service *service.ComplaintServic
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.get_all.New"
 
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 		log := log.With(
 			slog.String("op", op),
 			slog.String("url", r.URL.String()))
+
 		result, err := service.GetAllComplaints(r.Context())
 		log.Info("url", r.URL.String())
 
 		if errors.Is(err, storage.ErrComplaintNotFound) {
 			log.Error(op, sl.Err(err))
 			w.WriteHeader(http.StatusOK)
-			render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: nil, Message: storage.ErrComplaintNotFound.Error()})
+			responseData, _ := json.Marshal(response.Response{
+				StatusCode: http.StatusOK,
+				Data:       nil,
+				Message:    storage.ErrComplaintNotFound.Error(),
+			})
+			_, _ = w.Write(responseData)
 			return
 		}
 		if err != nil {
 			log.Error(op, sl.Err(err))
-			render.JSON(w, r, response.Response{StatusCode: http.StatusInternalServerError, Data: nil})
+			responseData, _ := json.Marshal(response.Response{
+				StatusCode: http.StatusInternalServerError,
+				Data:       nil,
+			})
+			_, _ = w.Write(responseData)
 			return
 		}
 
 		log.Info("complaints found")
-		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: result})
+		responseData, _ := json.Marshal(response.Response{
+			StatusCode: http.StatusOK,
+			Data:       result,
+		})
+		_, _ = w.Write(responseData)
 	}
 }

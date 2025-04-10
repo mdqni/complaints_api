@@ -3,7 +3,6 @@ package cache
 import (
 	"bytes"
 	"complaint_server/internal/lib/logger/sl"
-	_ "encoding/json"
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
@@ -14,30 +13,30 @@ import (
 func CacheMiddleware(redis *redis.Client, ttl time.Duration, log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			key := fmt.Sprintf("cache:%s", r.URL.Path)
-			log.Info(key)
+			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			ctx := r.Context()
+			key := fmt.Sprintf("cache:%s", r.URL.Path)
 
-			cached, err := redis.Get(ctx, key).Result()
+			cached, err := redis.Get(ctx, key).Bytes()
 			if err == nil {
 				log.Info("Cache hit", slog.String("key", key))
-				w.Header().Set("Content-Type", "application/json; charset=utf-8")
 				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(cached))
+				_, _ = w.Write(cached)
 				return
 			}
 
-			recorder := &responseRecorder{ResponseWriter: w, body: new(bytes.Buffer)}
+			recorder := &responseRecorder{
+				ResponseWriter: w,
+				body:           new(bytes.Buffer),
+			}
 			next.ServeHTTP(recorder, r)
-			contentType := recorder.Header().Get("Content-Type")
 
-			if recorder.status == http.StatusOK && contentType == "application/json; charset=utf-8" {
-				cachedData := recorder.body.Bytes()
-				err := redis.Set(ctx, key, cachedData, ttl).Err()
+			if recorder.status == http.StatusOK {
+				err := redis.Set(ctx, key, recorder.body.Bytes(), ttl).Err()
 				if err != nil {
 					log.Error("Failed to set cache", sl.Err(err))
 				} else {
-					log.Info("Cache set for key", slog.String("key", key))
+					log.Info("Cache set", slog.String("key", key))
 				}
 			}
 		})
@@ -50,12 +49,12 @@ type responseRecorder struct {
 	status int
 }
 
-func (rw *responseRecorder) Write(p []byte) (int, error) {
-	rw.body.Write(p)
-	return rw.ResponseWriter.Write(p)
-}
-
 func (rw *responseRecorder) WriteHeader(statusCode int) {
 	rw.status = statusCode
 	rw.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (rw *responseRecorder) Write(p []byte) (int, error) {
+	rw.body.Write(p)
+	return rw.ResponseWriter.Write(p)
 }

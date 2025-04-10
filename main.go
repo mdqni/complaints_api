@@ -118,7 +118,7 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 	_adminService := authService.NewAdminService(storage)
 	router.Route("/complaints", func(r chi.Router) {
 		r.Post("/", create.New(log, _complaintService))                                                                      //Создать компл
-		r.With(cache.CacheMiddleware(client, 3*time.Minute, log)).Get("/", get_all.New(ctx, log, _complaintService, client)) // Получить все компл
+		r.With(cache.CacheMiddleware(client, 1*time.Minute, log)).Get("/", get_all.New(ctx, log, _complaintService, client)) // Получить все компл
 		r.Get("/{id}", get_complaint_by_complaint_id.New(log, _complaintService))                                            // Получить компл по айди
 	})
 	router.Route("/categories", func(r chi.Router) {

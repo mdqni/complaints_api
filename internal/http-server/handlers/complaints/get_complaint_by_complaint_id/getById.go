@@ -5,6 +5,7 @@ import (
 	"complaint_server/internal/lib/logger/sl"
 	"complaint_server/internal/service/complaint"
 	"complaint_server/internal/storage"
+	"encoding/json"
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -28,9 +29,13 @@ import (
 func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.get_by_complaint_id.New"
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 		log := log.With(
 			slog.String("op", op),
 			slog.String("url", r.URL.String()))
+
 		id, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
 			log.Error("incorrect id on params", sl.Err(err))
@@ -48,8 +53,14 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			render.JSON(w, r, response.Error("internal error", http.StatusInternalServerError))
 			return
 		}
-		log.Info("complaints found")
-		w.WriteHeader(http.StatusOK)
-		render.JSON(w, r, response.Response{StatusCode: http.StatusOK, Data: result})
+
+		log.Info("complaint found")
+
+		// Явная сериализация с использованием json.Marshal
+		responseData, _ := json.Marshal(response.Response{
+			StatusCode: http.StatusOK,
+			Data:       result,
+		})
+		_, _ = w.Write(responseData)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
 	service "complaint_server/internal/service/category"
+	"encoding/json"
 	"github.com/go-chi/render"
 	"log/slog"
 	"net/http"
@@ -19,16 +20,19 @@ import (
 // @Router /categories [get]
 func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8") // Убедись, что установил utf-8
 		const op = "handlers.category.get_all.New"
 		log := log.With(
 			slog.String("op", op),
 			slog.String("url", r.URL.String()))
 		ctx := r.Context()
 
+		// Получаем категории
 		result, err := service.GetCategories(ctx)
 
 		if err != nil {
 			log.Error(op, sl.Err(err))
+			w.Header().Set("Content-Type", "application/json; charset=utf-8") // Устанавливаем правильный контент
 			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, response.Response{
 				Message:    "internal error",
@@ -38,13 +42,33 @@ func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 			return
 		}
 
+		// Если все нормально, сериализуем результат в JSON
 		log.Info("Categories found")
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		render.JSON(w, r, response.Response{
+
+		// Ручная сериализация JSON с ensure_ascii=false
+		responseData := response.Response{
 			Message:    "Categories fetched successfully",
 			StatusCode: http.StatusOK,
 			Data:       result,
-		})
+		}
+
+		encodedResponse, err := json.MarshalIndent(responseData, "", "  ")
+		if err != nil {
+			log.Error(op, sl.Err(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			render.JSON(w, r, response.Response{
+				Message:    "Failed to serialize response",
+				StatusCode: http.StatusInternalServerError,
+				Data:       nil,
+			})
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, err = w.Write(encodedResponse)
+		if err != nil {
+			log.Error(op, sl.Err(err))
+		}
 		log.Info("result: ", result[0])
 	}
 }
