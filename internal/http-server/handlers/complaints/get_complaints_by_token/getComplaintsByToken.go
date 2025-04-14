@@ -1,6 +1,7 @@
 package get_complaints_by_token
 
 import (
+	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/fetchStudentProfile"
 	service "complaint_server/internal/service/complaint"
 	"encoding/json"
@@ -43,7 +44,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			return
 		}
 
-		responseData, err := json.Marshal(complaints)
+		responseData, err := json.Marshal(response.Response{Data: complaints, StatusCode: http.StatusOK})
 		if err != nil {
 			http.Error(w, "failed to serialize complaints", http.StatusInternalServerError)
 			return
