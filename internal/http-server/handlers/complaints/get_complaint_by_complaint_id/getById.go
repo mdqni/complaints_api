@@ -56,7 +56,6 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 
 		log.Info("complaint found")
 
-		// Явная сериализация с использованием json.Marshal
 		responseData, _ := json.Marshal(response.Response{
 			StatusCode: http.StatusOK,
 			Data:       result,

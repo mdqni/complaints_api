@@ -9,11 +9,13 @@ import (
 	categoriesGetAll "complaint_server/internal/http-server/handlers/category/get_all"
 	"complaint_server/internal/http-server/handlers/category/get_by_id"
 	updateCategory "complaint_server/internal/http-server/handlers/category/update"
+	"complaint_server/internal/http-server/handlers/complaints/can_submit"
 	"complaint_server/internal/http-server/handlers/complaints/create"
 	deleteComplaint "complaint_server/internal/http-server/handlers/complaints/delete"
-	"complaint_server/internal/http-server/handlers/complaints/get_all"
+	getallcomplaint "complaint_server/internal/http-server/handlers/complaints/get_all"
 	"complaint_server/internal/http-server/handlers/complaints/get_complaint_by_complaint_id"
 	"complaint_server/internal/http-server/handlers/complaints/get_complaints_by_category_id"
+	"complaint_server/internal/http-server/handlers/complaints/get_complaints_by_token"
 	"complaint_server/internal/http-server/handlers/complaints/update"
 	"complaint_server/internal/http-server/middleware/admin_only"
 	"complaint_server/internal/http-server/middleware/cache"
@@ -54,7 +56,7 @@ const (
 // @contact.email	quanaimadi@.gmail.com
 // @license.name	MIT
 // @license.url	https://opensource.org/licenses/MIT
-// @host			https://complaints-api.yeunikey.dev
+// @host			complaints-api.yeunikey.dev
 // @BasePath		/
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -117,9 +119,11 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 	_categoryService := categoryService.NewCategoriesService(storage)
 	_adminService := authService.NewAdminService(storage)
 	router.Route("/complaints", func(r chi.Router) {
-		r.Post("/", create.New(log, _complaintService))                                                                      //Создать компл
-		r.With(cache.CacheMiddleware(client, 1*time.Minute, log)).Get("/", get_all.New(ctx, log, _complaintService, client)) // Получить все компл
-		r.Get("/{id}", get_complaint_by_complaint_id.New(log, _complaintService))                                            // Получить компл по айди
+		r.With(cache.CacheMiddleware(client, 1*time.Minute, log)).Get("/", getallcomplaint.New(log, _complaintService)) // Получить все компл
+		r.Post("/", create.New(log, _complaintService))                                                                 //Создать компл
+		r.Get("/{id}", get_complaint_by_complaint_id.New(log, _complaintService))                                       // Получить компл по айди
+		r.Get("/can-submit", can_submit.New(log, _complaintService))
+		r.Get("/by-token", get_complaints_by_token.New(log, _complaintService))
 	})
 	router.Route("/categories", func(r chi.Router) {
 		r.Use(cache.CacheMiddleware(client, time.Minute*1, log))

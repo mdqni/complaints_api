@@ -78,3 +78,13 @@ func (s *ComplaintService) UpdateComplaint(ctx context.Context, complaintID int6
 func (s *ComplaintService) DeleteComplaintById(ctx context.Context, complaintID int) error {
 	return s.storage.DeleteComplaint(ctx, complaintID)
 }
+
+// CanSubmitByBarcode проверяет может ли отправить
+func (s *ComplaintService) CanSubmitByBarcode(ctx context.Context, userID string) (bool, error) {
+	return s.storage.CheckComplaintLimit(ctx, userID)
+}
+
+// GetComplaintsByBarcode
+func (s *ComplaintService) GetComplaintsByBarcode(ctx context.Context, barcode string) ([]domain.Complaint, error) {
+	return s.storage.GetComplaintsByBarcode(ctx, barcode)
+}

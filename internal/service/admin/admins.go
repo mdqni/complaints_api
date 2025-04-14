@@ -30,14 +30,3 @@ func (s *AdminService) Login(ctx context.Context, username, password string) (*d
 
 	return admin, nil
 }
-
-func (s *AdminService) Register(ctx context.Context, admin *domain.Admin, password string) error {
-	// Хэшируем пароль перед сохранением
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-	admin.PasswordHash = string(hashedPassword)
-
-	return s.adminStorage.CreateAdmin(ctx, admin)
-}

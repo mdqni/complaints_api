@@ -1,47 +1,64 @@
-package get_all
+package get_all_complaint
 
 import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
 	"complaint_server/internal/service/complaint"
 	"complaint_server/internal/storage"
-	"context"
 	"encoding/json"
 	"errors"
-	"github.com/redis/go-redis/v9"
+	"fmt"
+	"github.com/go-chi/chi/v5"
 	"log/slog"
 	"net/http"
+	"strconv"
 )
 
-// New @Summary Get all complaints
-// @Description Retrieve all complaints from the database. Caches the result for 5 minutes.
+// New GetComplaintById godoc
+// @Summary Get a complaint by ID
+// @Description Retrieve a complaint using its unique identifier. The ID must be an integer that corresponds to a valid complaint in the database.
 // @Tags Complaints
+// @Accept json
 // @Produce json
-// @Success 200 {array} response.Response "List of all complaints"
-// @Failure 404 {object} response.Response "No complaints found in the database"
+// @Param id path int true "Complaint ID (unique identifier of the complaint)"
+// @Success 200 {object} domain.Complaint "Complaint details"
+// @Failure 400 {object} response.Response "Invalid request, incorrect ID format"
+// @Failure 404 {object} response.Response "Complaint with the given ID not found"
 // @Failure 500 {object} response.Response "Internal server error"
-// @Router /complaints [get]
-func New(ctx context.Context, log *slog.Logger, service *service.ComplaintService, client *redis.Client) http.HandlerFunc {
+// @Router /complaints/{id} [get]
+func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.complaint.get_all.New"
+		const op = "handlers.complaint.get_by_complaint_id.New"
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 		log := log.With(
 			slog.String("op", op),
-			slog.String("url", r.URL.String()))
+			slog.String("url", r.URL.String()),
+		)
 
-		result, err := service.GetAllComplaints(r.Context())
-		log.Info("url", r.URL.String())
-
-		if errors.Is(err, storage.ErrComplaintNotFound) {
-			log.Error(op, sl.Err(err))
-			w.WriteHeader(http.StatusOK)
+		id, err := strconv.Atoi(chi.URLParam(r, "id"))
+		if err != nil {
+			log.Error("incorrect id on params", sl.Err(err))
 			responseData, _ := json.Marshal(response.Response{
-				StatusCode: http.StatusOK,
+				StatusCode: http.StatusBadRequest,
 				Data:       nil,
-				Message:    storage.ErrComplaintNotFound.Error(),
+				Message:    "incorrect id on params",
 			})
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write(responseData)
+			return
+		}
+
+		result, err := service.GetComplaintById(r.Context(), id)
+		if errors.Is(err, storage.ErrComplaintNotFound) {
+			log.Error("complaint not found", sl.Err(err))
+			responseData, _ := json.Marshal(response.Response{
+				StatusCode: http.StatusNotFound,
+				Data:       nil,
+				Message:    fmt.Sprintf("complaint with this id %d not found", id),
+			})
+			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write(responseData)
 			return
 		}
@@ -50,12 +67,14 @@ func New(ctx context.Context, log *slog.Logger, service *service.ComplaintServic
 			responseData, _ := json.Marshal(response.Response{
 				StatusCode: http.StatusInternalServerError,
 				Data:       nil,
+				Message:    "internal error",
 			})
+			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write(responseData)
 			return
 		}
 
-		log.Info("complaints found")
+		log.Info(fmt.Sprintf("complaint found with id: %d", id))
 		responseData, _ := json.Marshal(response.Response{
 			StatusCode: http.StatusOK,
 			Data:       result,

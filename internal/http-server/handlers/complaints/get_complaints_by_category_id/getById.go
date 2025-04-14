@@ -4,8 +4,8 @@ import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
 	"complaint_server/internal/service/complaint"
+	"encoding/json"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/render"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -26,37 +26,47 @@ import (
 func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaints.getByCategoryId.New"
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
 		log := log.With(
 			slog.String("op", op),
-			slog.String("url", r.URL.String()))
+			slog.String("url", r.URL.String()),
+		)
 
 		categoryId, err := strconv.Atoi(chi.URLParam(r, "id"))
 		if err != nil {
 			log.Error("incorrect category id format", sl.Err(err))
-			render.JSON(w, r, response.Response{
+			responseData, _ := json.Marshal(response.Response{
 				Message:    "invalid category id format",
 				StatusCode: http.StatusBadRequest,
 				Data:       nil,
 			})
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write(responseData)
 			return
 		}
 
 		result, err := service.GetComplaintsByCategoryId(r.Context(), categoryId)
 		if err != nil {
 			log.Error("failed to get complaints", sl.Err(err))
-			render.JSON(w, r, response.Response{
+			responseData, _ := json.Marshal(response.Response{
 				Message:    "no complaints found for the given category",
 				StatusCode: http.StatusNotFound,
 				Data:       nil,
 			})
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write(responseData)
 			return
 		}
 
 		log.Info("Complaints found for category", slog.Int("category_id", categoryId))
-		render.JSON(w, r, response.Response{
+		responseData, _ := json.Marshal(response.Response{
 			Message:    "Complaints fetched successfully",
 			StatusCode: http.StatusOK,
 			Data:       result,
 		})
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(responseData)
 	}
 }

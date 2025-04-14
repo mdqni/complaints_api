@@ -50,7 +50,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		var req Request
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
-			log.Error("failed to decode request body", sl.Err(err)) //Пишем в лог
+			log.Error("failed to decode request body", sl.Err(err))
 			render.JSON(w, r, response.Response{
 				Message:    "failed to decode request",
 				StatusCode: http.StatusBadRequest,

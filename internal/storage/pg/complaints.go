@@ -202,6 +202,23 @@ func (s *Storage) UpdateComplaintStatus(ctx context.Context, complaintID int64, 
 
 	return nil
 }
+func (s *Storage) GetComplaintsByBarcode(ctx context.Context, barcode string) ([]domain.Complaint, error) {
+	rows, err := s.db.Query(ctx, "SELECT * FROM complaints WHERE barcode = $1", barcode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var complaints []domain.Complaint
+	for rows.Next() {
+		var c domain.Complaint
+		if err := rows.Scan(&c.ID, &c.Barcode, &c.Category.ID, &c.Message, &c.Status, &c.CreatedAt, &c.UpdatedAt, &c.Answer.String); err != nil {
+			return nil, err
+		}
+		complaints = append(complaints, c)
+	}
+	return complaints, nil
+}
 
 // CheckComplaintLimit проверяет временной лимит для отправки жалоб.
 func (s *Storage) CheckComplaintLimit(ctx context.Context, barcode string) (bool, error) {
