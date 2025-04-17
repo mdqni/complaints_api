@@ -58,6 +58,7 @@ const (
 // @license.url	https://opensource.org/licenses/MIT
 // @host			complaints-api.yeunikey.dev
 // @BasePath		/
+// @schemes https
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -131,14 +132,8 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 		r.Get("/{id}", categories_get_by_id.New(log, _categoryService))
 		r.Get("/{id}/complaints", get_complaints_by_category_id.New(log, _complaintService)) //Получить компл по категории айди
 	})
+	router.Get("/docs/*", httpSwagger.WrapHandler)
 
-	router.Route("/docs", func(r chi.Router) {
-		r.Use(middleware.BasicAuth("admin", map[string]string{
-			cfg.HTTPServer.User: cfg.HTTPServer.Password,
-		}))
-		r.Get("/*", httpSwagger.WrapHandler)
-
-	})
 	router.Route("/login", func(r chi.Router) {
 		r.Post("/*", auth.New(log, _adminService))
 	})

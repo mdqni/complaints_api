@@ -1,4 +1,4 @@
-package fetchStudentProfile
+package studentProfile
 
 import (
 	"encoding/json"

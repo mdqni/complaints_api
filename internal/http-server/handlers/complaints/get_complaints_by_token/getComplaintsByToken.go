@@ -2,7 +2,7 @@ package get_complaints_by_token
 
 import (
 	"complaint_server/internal/lib/api/response"
-	"complaint_server/internal/lib/fetchStudentProfile"
+	"complaint_server/internal/lib/fetch/studentProfile"
 	service "complaint_server/internal/service/complaint"
 	"encoding/json"
 	"log/slog"
@@ -16,7 +16,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param token query string true "User token"
-// @Success 200 {array} response.Response "List of complaints"
+// @Success 200 {object} response.Response "List of complaints"
 // @Failure 400 {object}  response.Response "Token required"
 // @Failure 401 {object} response.Response "Invalid token or failed to fetch profile"
 // @Failure 500 {object} response.Response "Failed to serialize complaints"
@@ -30,7 +30,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			return
 		}
 
-		profile, err := fetchStudentProfile.FetchStudentProfile(token)
+		profile, err := studentProfile.FetchStudentProfile(token)
 		log.Info("Profile: ", profile)
 		if err != nil {
 			log.Error("invalid token or failed to fetch profile", http.StatusUnauthorized)
