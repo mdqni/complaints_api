@@ -23,7 +23,7 @@ type RequestBody struct {
 // @Accept json
 // @Produce json
 // @Param credentials body RequestBody true "Admin credentials"
-// @Success 200 {object} map[string]string "JWT token"
+// @Success 200 {object} string "JWT token"
 // @Failure 400 {object} response.Response "Invalid request body"
 // @Failure 401 {object} response.Response "Invalid credentials"
 // @Failure 500 {object} response.Response "Failed to generate token"
