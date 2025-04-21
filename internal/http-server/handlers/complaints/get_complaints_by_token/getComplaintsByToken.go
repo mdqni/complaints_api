@@ -1,10 +1,12 @@
 package get_complaints_by_token
 
 import (
+	"complaint_server/internal/config"
 	"complaint_server/internal/lib/api/response"
-	"complaint_server/internal/lib/fetch/studentProfile"
+	"complaint_server/internal/lib/jwt"
 	service "complaint_server/internal/service/complaint"
 	"encoding/json"
+	"github.com/go-chi/render"
 	"log/slog"
 	"net/http"
 )
@@ -21,20 +23,29 @@ import (
 // @Failure 401 {object} response.Response "Invalid token or failed to fetch profile"
 // @Failure 500 {object} response.Response "Failed to serialize complaints"
 // @Router /complaints/by-token [get]
-func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
+func New(cfg *config.Config, log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := r.URL.Query().Get("token")
 		if token == "" {
 			log.Error("token required", http.StatusBadRequest)
-			http.Error(w, "token required", http.StatusBadRequest)
+			render.JSON(w, r, response.Response{
+				Message:    "token required",
+				StatusCode: http.StatusBadRequest,
+			})
 			return
 		}
-
-		profile, err := studentProfile.FetchStudentProfile(token)
+		log.Info("token", token)
+		profile, err := jwt.EncodeJWT(cfg.JwtSecret, token)
 		log.Info("Profile: ", profile)
 		if err != nil {
-			log.Error("invalid token or failed to fetch profile", err)
-			http.Error(w, "invalid token or failed to fetch profile", http.StatusUnauthorized)
+			log.Error("invalid token or failed to fetch profile", "Err", response.Response{
+				Message:    err.Error(),
+				StatusCode: http.StatusBadRequest,
+			})
+			render.JSON(w, r, response.Response{
+				Message:    err.Error(),
+				StatusCode: http.StatusBadRequest,
+			})
 			return
 		}
 
@@ -42,13 +53,19 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		log.Error("scan error", "err", err)
 		if err != nil {
 			log.Error("failed to get complaints", "err", err)
-			http.Error(w, "failed to get complaints", http.StatusInternalServerError)
+			render.JSON(w, r, response.Response{
+				Message:    err.Error(),
+				StatusCode: http.StatusInternalServerError,
+			})
 			return
 		}
 
 		responseData, err := json.Marshal(response.Response{Data: complaints, StatusCode: http.StatusOK})
 		if err != nil {
-			http.Error(w, "failed to serialize complaints", http.StatusInternalServerError)
+			render.JSON(w, r, response.Response{
+				Message:    err.Error(),
+				StatusCode: http.StatusInternalServerError,
+			})
 			return
 		}
 

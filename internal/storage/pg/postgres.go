@@ -60,10 +60,7 @@ func New(connString string) (*Storage, error) {
 		// Таблица админов
 		`CREATE TABLE IF NOT EXISTS admins (
 			id SERIAL PRIMARY KEY,
-			barcode INTEGER UNIQUE NOT NULL,
-			password_hash TEXT NOT NULL,
-			role VARCHAR(20) NOT NULL DEFAULT 'admin',
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			barcode INTEGER UNIQUE NOT NULL
 		);`,
 	}
 

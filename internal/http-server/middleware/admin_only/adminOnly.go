@@ -1,16 +1,19 @@
 package admin_only
 
 import (
+	"complaint_server/internal/config"
+	authService "complaint_server/internal/service/admin"
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 	"log/slog"
 )
 
-func AdminOnlyMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
+func AdminOnlyMiddleware(logger *slog.Logger, cfg *config.Config, service *authService.AdminService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
@@ -29,7 +32,7 @@ func AdminOnlyMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 
 			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 				logger.Info("Token found", slog.String("token", tokenString))
-				return []byte("a-string-secret-at-least-256-bits-long"), nil
+				return []byte(cfg.JwtSecret), nil
 			})
 
 			if err != nil || !token.Valid {
@@ -45,14 +48,23 @@ func AdminOnlyMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 				http.Error(w, "Invalid token claims", http.StatusUnauthorized)
 				return
 			}
-
-			role, ok := claims["role"].(string)
-			if !ok || role != "admin" {
-				logger.Warn("Forbidden access", slog.String("role", role))
-				http.Error(w, "Forbidden", http.StatusForbidden)
+			bcode, err := strconv.Atoi(strconv.Itoa(int(claims["barcode"].(float64))))
+			if err != nil {
+				logger.Error("Invalid token barcode", slog.String("barcode", claims["barcode"].(string)))
+				http.Error(w, "Invalid token barcode", http.StatusUnauthorized)
 				return
 			}
-			logger.Info("Admin passed")
+			isAdmin, err := service.IsAdmin(r.Context(), bcode)
+			if err != nil {
+				logger.Error("Invalid token barcode", slog.String("barcode", claims["barcode"].(string)))
+				http.Error(w, "Invalid token barcode", http.StatusUnauthorized)
+				return
+			}
+			if !isAdmin {
+				logger.Error("User is not admin", slog.String("barcode", claims["barcode"].(string)))
+				http.Error(w, "User is not admin", http.StatusUnauthorized)
+				return
+			}
 			ctx := context.WithValue(r.Context(), "barcode", claims["barcode"])
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

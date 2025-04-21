@@ -3,7 +3,6 @@ package main
 import (
 	_ "complaint_server/docs"
 	"complaint_server/internal/config"
-	"complaint_server/internal/http-server/handlers/auth"
 	categoriesCreate "complaint_server/internal/http-server/handlers/category/create"
 	deleteCategoryById "complaint_server/internal/http-server/handlers/category/delete"
 	categoriesGetAll "complaint_server/internal/http-server/handlers/category/get_all"
@@ -74,7 +73,6 @@ func main() {
 	log.Debug("Debug message are enabled")
 	rdb := setupRedis(ctx, cfg, log)
 	storage := setupStorage(cfg.ConnString, log)
-	//storage := setupStorage("postgresql://postgres:postgres@localhost:5432/postgres", log)
 	router := setupRouter(ctx, log, cfg, storage, rdb)
 
 	startServer(cfg, router, log)
@@ -126,7 +124,7 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 		r.Post("/", create.New(log, _complaintService))                           //Создать компл
 		r.Get("/{id}", get_complaint_by_complaint_id.New(log, _complaintService)) // Получить компл по айди
 		r.Get("/can-submit", can_submit.New(log, _complaintService))
-		r.Get("/by-token", get_complaints_by_token.New(log, _complaintService))
+		r.Get("/by-token", get_complaints_by_token.New(cfg, log, _complaintService))
 	})
 	router.Route("/categories", func(r chi.Router) {
 		r.Use(cache.CacheMiddleware(client, time.Minute*1, log))
@@ -136,13 +134,9 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 	})
 	router.Get("/docs/*", httpSwagger.WrapHandler)
 
-	router.Route("/login", func(r chi.Router) {
-		r.Post("/*", auth.New(log, _adminService))
-	})
-
 	router.Route("/admin", func(r chi.Router) {
 
-		r.Use(admin_only.AdminOnlyMiddleware(log))
+		r.Use(admin_only.AdminOnlyMiddleware(log, cfg, _adminService))
 		//Complaint
 		r.Put("/complaints/{id}", update.New(ctx, log, _complaintService, client))
 		r.Delete("/complaints/{id}", deleteComplaint.New(ctx, log, _complaintService, client)) //Удалить компл

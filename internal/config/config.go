@@ -8,6 +8,7 @@ import (
 type Config struct {
 	Env         string `env:"ENV" env-default:"local"`
 	ConnString  string `env:"CONN_STRING" env-default:"postgres://admin:Aitusa2025!@34.89.141.175:1005/complaints?sslmode=disable"`
+	JwtSecret   string `env:"JWT_SECRET" env-default:"SUPER-SECRET-CODE"`
 	RedisClient RedisClient
 	HTTPServer  HTTPServer
 }
