@@ -22,36 +22,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/categories": {
-            "get": {
-                "description": "Возвращает список всех категорий жалоб, доступных в системе.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Categories"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "List of all categories",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.Category"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error while fetching categories",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            },
+        "/admin/categories": {
             "post": {
                 "description": "Создает новую категорию жалоб с необходимыми данными: название, описание и ответ.",
                 "consumes": [
@@ -96,48 +67,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/categories/{id}": {
-            "get": {
-                "description": "Возвращает категорию по уникальному идентификатору (ID).",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Categories"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Category ID (unique identifier of the category)",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Category details",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Category"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid ID format",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error while fetching the category",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            },
+        "/admin/categories/{id}": {
             "put": {
                 "description": "Обновляет информацию о категории жалоб. Требуется предоставить ID категории и новые данные (название, описание и ответ).",
                 "consumes": [
@@ -229,6 +159,173 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/complaints/{id}": {
+            "put": {
+                "description": "Updates an existing complaint based on the provided complaint ID and new data.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Complaints"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Complaint ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Complaint resolution details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/update.Request"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Complaint updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/update.Request"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Complaint not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a complaint by its ID. If the complaint is not found, an error is returned.",
+                "tags": [
+                    "Complaints"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Complaint ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Complaint successfully deleted",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request or complaint not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/categories": {
+            "get": {
+                "description": "Возвращает список всех категорий жалоб, доступных в системе.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Categories"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of all categories",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.Category"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error while fetching categories",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/categories/{id}": {
+            "get": {
+                "description": "Возвращает категорию по уникальному идентификатору (ID).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Categories"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category ID (unique identifier of the category)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Category details",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Category"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID format",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error while fetching the category",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/categories/{id}/complaints": {
             "get": {
                 "description": "Retrieve all complaints that belong to a specific category based on its unique identifier (Category ID).",
@@ -283,6 +380,54 @@ const docTemplate = `{
             }
         },
         "/complaints": {
+            "get": {
+                "description": "Retrieve a complaint using its unique identifier. The ID must be an integer that corresponds to a valid complaint in the database.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Complaints"
+                ],
+                "summary": "Get a complaint by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Complaint ID (unique identifier of the complaint)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Complaint details",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Complaint"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request, incorrect ID format",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Complaint with the given ID not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Create a new complaint for a specific user and category. Only one complaint can be submitted per hour for the same user.",
                 "consumes": [
@@ -430,7 +575,7 @@ const docTemplate = `{
         },
         "/complaints/{id}": {
             "get": {
-                "description": "Retrieve a complaint using its unique identifier. The ID must be an integer that corresponds to a valid complaint in the database.",
+                "description": "Retrieve a complaint using its unique identifier. The UUID must be a string that corresponds to a valid complaint in the database.",
                 "consumes": [
                     "application/json"
                 ],
@@ -476,156 +621,6 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "put": {
-                "description": "Updates an existing complaint based on the provided complaint ID and new data.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Complaints"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Complaint ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Complaint resolution details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/update.Request"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Complaint updated successfully",
-                        "schema": {
-                            "$ref": "#/definitions/update.Request"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Complaint not found",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Delete a complaint by its ID. If the complaint is not found, an error is returned.",
-                "tags": [
-                    "Complaints"
-                ],
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Complaint ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Complaint successfully deleted",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request or complaint not found",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/complaints/{id}/status": {
-            "put": {
-                "description": "Update the status of a complaint (\"approved\" or \"rejected\") with an answer",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Complaints"
-                ],
-                "summary": "Resolve a complaint !!NOT ENABLE RIGHT NOW",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Complaint ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Complaint resolution details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/resolveComplaint.Request"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Complaint status updated successfully",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Complaint not found",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
             }
         },
         "/login": {
@@ -655,10 +650,7 @@ const docTemplate = `{
                     "200": {
                         "description": "JWT token",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "type": "string"
                         }
                     },
                     "400": {
@@ -776,21 +768,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "resolveComplaint.Request": {
-            "type": "object",
-            "required": [
-                "answer",
-                "status"
-            ],
-            "properties": {
-                "answer": {
-                    "type": "string"
-                },
-                "status": {
                     "type": "string"
                 }
             }
