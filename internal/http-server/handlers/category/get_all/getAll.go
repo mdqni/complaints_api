@@ -69,6 +69,6 @@ func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 		if err != nil {
 			log.Error(op, sl.Err(err))
 		}
-		log.Info("result: ", result[0])
+		log.Info("result: ", result)
 	}
 }

@@ -6,18 +6,29 @@ import (
 	"context"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
+	"time"
 )
 
 func NewClient(ctx context.Context, cfg *config.Config, log *slog.Logger) (*redis.Client, error) {
+	dialTimeout, err := time.ParseDuration(cfg.RedisClient.DialTimeout)
+	if err != nil {
+		log.Error("invalid REDIS_DIAL_TIMEOUT: %v", err)
+	}
+
+	timeout, err := time.ParseDuration(cfg.RedisClient.Timeout)
+	if err != nil {
+		log.Error("invalid REDIS_TIMEOUT: %v", err)
+	}
+
 	db := redis.NewClient(&redis.Options{
-		Addr:         "34.89.141.175:1006",
-		Username:     "default",
+		Addr:         cfg.RedisClient.Addr,
+		Username:     cfg.RedisClient.User,
 		DB:           0,
-		Password:     "Aitusa2025!",
-		MaxRetries:   cfg.MaxRetries,
-		DialTimeout:  cfg.DialTimeout,
-		ReadTimeout:  cfg.RedisClient.Timeout,
-		WriteTimeout: cfg.RedisClient.Timeout,
+		Password:     cfg.RedisClient.Password,
+		MaxRetries:   cfg.RedisClient.MaxRetries,
+		DialTimeout:  dialTimeout,
+		ReadTimeout:  timeout,
+		WriteTimeout: timeout,
 	})
 	log.Info(db.String())
 	if err := db.Ping(ctx).Err(); err != nil {

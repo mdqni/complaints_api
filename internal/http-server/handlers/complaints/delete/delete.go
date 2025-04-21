@@ -10,20 +10,20 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
 	"net/http"
-	"strconv"
 )
 
 // New @Summary Delete a complaint
 // @Description Delete a complaint by its ID. If the complaint is not found, an error is returned.
 // @Tags Complaints
-// @Param id path int true "Complaint ID"
+// @Param id path string true "Complaint ID"
 // @Success 200 {object} response.Response "Complaint successfully deleted"
 // @Failure 400 {object} response.Response "Invalid request or complaint not found"
 // @Failure 500 {object} response.Response "Internal server error"
-// @Router /complaints/{id} [delete]
+// @Router /admin/complaints/{id} [delete]
 func New(context context.Context, log *slog.Logger, service *service.ComplaintService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.delete.New"
@@ -42,7 +42,7 @@ func New(context context.Context, log *slog.Logger, service *service.ComplaintSe
 			return
 		}
 
-		atoi, err := strconv.Atoi(id)
+		uuid, err := uuid.Parse(id)
 		if err != nil {
 			log.Error("invalid complaint ID format", sl.Err(err))
 			render.JSON(w, r, response.Response{
@@ -53,7 +53,7 @@ func New(context context.Context, log *slog.Logger, service *service.ComplaintSe
 			return
 		}
 
-		err = service.DeleteComplaintById(r.Context(), atoi)
+		err = service.DeleteComplaintById(r.Context(), uuid)
 		if errors.Is(err, storage.ErrComplaintNotFound) {
 			log.Error("complaint not found", sl.Err(err))
 			render.JSON(w, r, response.Response{
@@ -76,7 +76,7 @@ func New(context context.Context, log *slog.Logger, service *service.ComplaintSe
 
 		client.Del(r.Context(), "cache:/complaints")
 		log.Info("complaint successfully deleted")
-		client.Del(context, fmt.Sprintf("cache:/complaints/%d", atoi))
+		client.Del(context, fmt.Sprintf("cache:/complaints"))
 		// Успешный ответ
 		render.JSON(w, r, response.Response{
 			Message:    "Complaint successfully deleted",

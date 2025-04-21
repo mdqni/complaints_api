@@ -5,6 +5,7 @@ import (
 	"complaint_server/internal/storage/pg"
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 )
 
 type CategoryService struct {
@@ -16,7 +17,7 @@ func NewCategoriesService(strg *pg.Storage) *CategoryService {
 }
 
 // CreateCategory создаёт категорию
-func (s *CategoryService) CreateCategory(ctx context.Context, category domain.Category) (int64, error) {
+func (s *CategoryService) CreateCategory(ctx context.Context, category domain.Category) (uuid.UUID, error) {
 	// Сохраняем жалобу
 	answer, err := s.storage.CreateCategory(ctx, category)
 	if err != nil {
@@ -27,17 +28,17 @@ func (s *CategoryService) CreateCategory(ctx context.Context, category domain.Ca
 }
 
 // UpdateCategory обновляет категорию
-func (s *CategoryService) UpdateCategory(ctx context.Context, category domain.Category) (int, error) {
+func (s *CategoryService) UpdateCategory(ctx context.Context, uuid_ uuid.UUID, category domain.Category) (uuid.UUID, error) {
 	const op = "storage.category.UpdateCategory"
-	id, err := s.storage.UpdateCategory(ctx, category)
+	id, err := s.storage.UpdateCategory(ctx, uuid_, category)
 	if err != nil {
-		return 0, err
+		return uuid.UUID{}, err
 	}
 	return id, nil
 }
 
 // GetCategoryById получает жалобу по ID
-func (s *CategoryService) GetCategoryById(ctx context.Context, categoryId int) (domain.Category, error) {
+func (s *CategoryService) GetCategoryById(ctx context.Context, categoryId uuid.UUID) (domain.Category, error) {
 	category, err := s.storage.GetCategoryById(ctx, categoryId)
 	if err != nil {
 		return domain.Category{}, err
@@ -55,6 +56,6 @@ func (s *CategoryService) GetCategories(ctx context.Context) ([]domain.Category,
 }
 
 // DeleteCategoryById  удаляет жалобу
-func (s *CategoryService) DeleteCategoryById(ctx context.Context, complaintID int) error {
+func (s *CategoryService) DeleteCategoryById(ctx context.Context, complaintID uuid.UUID) error {
 	return s.storage.DeleteCategoryById(ctx, complaintID)
 }

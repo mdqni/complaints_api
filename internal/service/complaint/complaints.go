@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 )
 
 type ComplaintService struct {
@@ -18,28 +19,28 @@ func NewComplaintsService(strg *pg.Storage) *ComplaintService {
 }
 
 // CreateComplaint создаёт жалобу с проверкой ограничений.
-func (s *ComplaintService) CreateComplaint(ctx context.Context, barcode string, categoryID int, message string) (int, string, error) {
+func (s *ComplaintService) CreateComplaint(ctx context.Context, barcode int, categoryID uuid.UUID, message string) (uuid.UUID, string, error) {
 	// Проверяем, можно ли отправить жалобу
 	canSubmit, err := s.storage.CheckComplaintLimit(ctx, barcode)
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to check complaint limit: %w", err)
+		return uuid.UUID{}, "", fmt.Errorf("failed to check complaint limit: %w", err)
 	}
 	if !canSubmit {
-		return 0, "", storage.ErrLimitOneComplaintInOneHour
+		return uuid.UUID{}, "", storage.ErrLimitOneComplaintInOneHour
 	}
 
 	// Сохраняем жалобу
 	complaintID, answer, err := s.storage.SaveComplaint(ctx, barcode, categoryID, message)
 	if err != nil {
-		return 0, "", fmt.Errorf("failed to save complaint: %w", err)
+		return uuid.UUID{}, "", fmt.Errorf("failed to save complaint: %w", err)
 	}
 
 	return complaintID, answer, nil
 }
 
 // GetComplaintById получает жалобу по ID
-func (s *ComplaintService) GetComplaintById(ctx context.Context, complaintID int) (domain.Complaint, error) {
-	complaint, err := s.storage.GetComplaintById(ctx, complaintID)
+func (s *ComplaintService) GetComplaintByUUID(ctx context.Context, complaintID uuid.UUID) (domain.Complaint, error) {
+	complaint, err := s.storage.GetComplaintByUUID(ctx, complaintID)
 	if err != nil {
 		return domain.Complaint{}, err
 	}
@@ -60,31 +61,40 @@ func (s *ComplaintService) GetAllComplaints(ctx context.Context) ([]domain.Compl
 }
 
 // GetComplaintsByCategoryId получает жалобы по категории
-func (s *ComplaintService) GetComplaintsByCategoryId(ctx context.Context, categoryId int) ([]domain.Complaint, error) {
+func (s *ComplaintService) GetComplaintsByCategoryId(ctx context.Context, categoryId uuid.UUID) ([]domain.Complaint, error) {
 	return s.storage.GetComplaintsByCategoryId(ctx, categoryId)
 }
 
 // UpdateComplaintStatus обновляет статус жалобы
-func (s *ComplaintService) UpdateComplaintStatus(ctx context.Context, complaintID int64, status domain.ComplaintStatus, answer string) error {
+func (s *ComplaintService) UpdateComplaintStatus(ctx context.Context, complaintID uuid.UUID, status domain.ComplaintStatus, answer string) error {
 	return s.storage.UpdateComplaintStatus(ctx, complaintID, status, answer)
 }
 
 // UpdateComplaint обновляет жалобу
-func (s *ComplaintService) UpdateComplaint(ctx context.Context, complaintID int64, complaint domain.Complaint) (domain.Complaint, error) {
+func (s *ComplaintService) UpdateComplaint(ctx context.Context, complaintID uuid.UUID, complaint domain.Complaint) (domain.Complaint, error) {
 	return s.storage.UpdateComplaint(ctx, complaintID, complaint)
 }
 
 // DeleteComplaintById удаляет жалобу
-func (s *ComplaintService) DeleteComplaintById(ctx context.Context, complaintID int) error {
+func (s *ComplaintService) DeleteComplaintById(ctx context.Context, complaintID uuid.UUID) error {
 	return s.storage.DeleteComplaint(ctx, complaintID)
 }
 
 // CanSubmitByBarcode проверяет может ли отправить
-func (s *ComplaintService) CanSubmitByBarcode(ctx context.Context, userID string) (bool, error) {
-	return s.storage.CheckComplaintLimit(ctx, userID)
+func (s *ComplaintService) CanSubmitByBarcode(ctx context.Context, barcode int) (bool, error) {
+	return s.storage.CheckComplaintLimit(ctx, barcode)
 }
 
 // GetComplaintsByBarcode
-func (s *ComplaintService) GetComplaintsByBarcode(ctx context.Context, barcode string) ([]domain.Complaint, error) {
-	return s.storage.GetComplaintsByBarcode(ctx, barcode)
+func (s *ComplaintService) GetComplaintsByBarcode(ctx context.Context, barcode int) ([]domain.Complaint, error) {
+	complaints, err := s.storage.GetComplaintsByBarcode(ctx, barcode)
+	if errors.Is(err, storage.ErrComplaintNotFound) {
+		fmt.Println("❌ scan error:", err)
+		return nil, storage.ErrComplaintNotFound
+	}
+	if err != nil {
+		fmt.Println("❌ scan error:", err)
+		return []domain.Complaint{}, err
+	}
+	return complaints, err
 }

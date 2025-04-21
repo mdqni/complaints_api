@@ -33,7 +33,6 @@ func AdminOnlyMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 			})
 
 			if err != nil || !token.Valid {
-
 				logger.Error("Invalid token", slog.String("token", tokenString))
 				fmt.Println(err)
 				http.Error(w, "Invalid token", http.StatusUnauthorized)

@@ -9,23 +9,17 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	_ "github.com/swaggo/http-swagger"
 	"log/slog"
 	"net/http"
 )
 
 type Request struct {
-	Message    string `json:"message" validate:"required"`
-	CategoryID int    `json:"category_id" validate:"required"`
-	Barcode    string `json:"barcode"`
+	Message    string    `json:"message" validate:"required"`
+	CategoryID uuid.UUID `json:"category_id" validate:"required"`
+	Barcode    int       `json:"barcode"`
 }
-
-//type ComplaintResponse struct {
-//	Status int `json:"status"`
-//	Data   struct {
-//		Answer string `json:"answer"`
-//	} `json:"data"`
-//}
 
 // New CreateComplaint godoc
 // @Summary Create a new complaint
@@ -77,6 +71,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		message := req.Message
 		categoryID := req.CategoryID
 		barcode := req.Barcode
+
 		complaintID, answer, err := service.CreateComplaint(r.Context(), barcode, categoryID, message)
 
 		if errors.Is(err, storage.ErrLimitOneComplaintInOneHour) {

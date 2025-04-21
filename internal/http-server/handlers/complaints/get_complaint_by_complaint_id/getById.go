@@ -9,18 +9,18 @@ import (
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
+	"github.com/google/uuid"
 	"log/slog"
 	"net/http"
-	"strconv"
 )
 
 // New GetComplaintById godoc
 // @Summary Get a complaint by ID
-// @Description Retrieve a complaint using its unique identifier. The ID must be an integer that corresponds to a valid complaint in the database.
+// @Description Retrieve a complaint using its unique identifier. The UUID must be a string that corresponds to a valid complaint in the database.
 // @Tags Complaints
 // @Accept json
 // @Produce json
-// @Param id path int true "Complaint ID (unique identifier of the complaint)"
+// @Param id path string true "Complaint ID (unique identifier of the complaint)"
 // @Success 200 {object} domain.Complaint "Complaint details"
 // @Failure 400 {object} response.Response "Invalid request, incorrect ID format"
 // @Failure 404 {object} response.Response "Complaint with the given ID not found"
@@ -36,13 +36,18 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			slog.String("op", op),
 			slog.String("url", r.URL.String()))
 
-		id, err := strconv.Atoi(chi.URLParam(r, "id"))
-		if err != nil {
-			log.Error("incorrect id on params", sl.Err(err))
-			render.JSON(w, r, response.Error("incorrect id on params", http.StatusBadRequest))
+		id := chi.URLParam(r, "id")
+		if id == "" {
+			log.Error("Missing complaint_id")
+			render.JSON(w, r, response.Response{StatusCode: http.StatusBadRequest, Message: "Missing complaint_id"})
 			return
 		}
-		result, err := service.GetComplaintById(r.Context(), id)
+		uuid, err := uuid.Parse(id)
+		if err != nil {
+			log.Error("Invalid complaint_id")
+			render.JSON(w, r, response.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
+		}
+		result, err := service.GetComplaintByUUID(r.Context(), uuid)
 		if errors.Is(err, storage.ErrComplaintNotFound) {
 			log.Error("complaint not found", sl.Err(err))
 			render.JSON(w, r, response.Error("complaint with this id not found", http.StatusNotFound))

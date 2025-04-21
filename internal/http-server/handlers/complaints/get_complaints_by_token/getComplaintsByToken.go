@@ -33,13 +33,15 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 		profile, err := studentProfile.FetchStudentProfile(token)
 		log.Info("Profile: ", profile)
 		if err != nil {
-			log.Error("invalid token or failed to fetch profile", http.StatusUnauthorized)
+			log.Error("invalid token or failed to fetch profile", err)
 			http.Error(w, "invalid token or failed to fetch profile", http.StatusUnauthorized)
 			return
 		}
 
 		complaints, err := service.GetComplaintsByBarcode(r.Context(), profile.Barcode)
+		log.Error("scan error", "err", err)
 		if err != nil {
+			log.Error("failed to get complaints", "err", err)
 			http.Error(w, "failed to get complaints", http.StatusInternalServerError)
 			return
 		}

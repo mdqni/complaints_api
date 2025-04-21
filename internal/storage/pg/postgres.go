@@ -11,49 +11,65 @@ type Storage struct {
 	db *pgxpool.Pool
 }
 
-// New открывает соединение с БД и создаёт таблицы, если их нет.
 func New(connString string) (*Storage, error) {
 	const op = "storage.postgres.New"
 
-	pool, err := pgxpool.New(context.Background(), connString)
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, connString)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to connect to database: %w", op, err)
 	}
 
-	// Создание таблиц
-	initSchema := `SET search_path TO public;`
-	if _, err := pool.Exec(context.Background(), initSchema); err != nil {
-		return nil, fmt.Errorf("%s: failed to set search path: %w", op, err)
-	}
-	tables := []string{
+	statements := []string{
+		// Включаем расширение для UUID
+		`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`,
+
+		// Устанавливаем схему
+		`SET search_path TO public;`,
+
+		// ENUM тип для статуса жалоб
+		`DO $$
+		BEGIN
+			IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'complaint_status') THEN
+				CREATE TYPE complaint_status AS ENUM ('pending', 'approved', 'rejected');
+			END IF;
+		END
+		$$;`,
+
+		// Таблица категорий
 		`CREATE TABLE IF NOT EXISTS categories (
-			id SERIAL PRIMARY KEY,
+			uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			title TEXT NOT NULL UNIQUE,
 			description TEXT NOT NULL,
 			answer TEXT NOT NULL
 		);`,
+
+		// Таблица жалоб
 		`CREATE TABLE IF NOT EXISTS complaints (
-			id SERIAL PRIMARY KEY,
-			barcode TEXT NOT NULL,
-			category_id INTEGER NOT NULL,
+			uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			barcode INTEGER NOT NULL,
+			category_id UUID NOT NULL,
 			message TEXT NOT NULL,
-			status TEXT NOT NULL DEFAULT 'pending',
+			status complaint_status NOT NULL DEFAULT 'pending',
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			answer TEXT,
-			FOREIGN KEY (category_id) REFERENCES categories(id)
+			FOREIGN KEY (category_id) REFERENCES categories(uuid)
 		);`,
+
+		// Таблица админов
 		`CREATE TABLE IF NOT EXISTS admins (
-        id SERIAL PRIMARY KEY,
-        barcode VARCHAR(50) UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        role VARCHAR(20) NOT NULL DEFAULT 'admin',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
+			id SERIAL PRIMARY KEY,
+			barcode INTEGER UNIQUE NOT NULL,
+			password_hash TEXT NOT NULL,
+			role VARCHAR(20) NOT NULL DEFAULT 'admin',
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);`,
 	}
 
-	for _, table := range tables {
-		if _, err := pool.Exec(context.Background(), table); err != nil {
-			return nil, fmt.Errorf("%s: failed to register tables: %w", op, err)
+	for _, stmt := range statements {
+		if _, err := pool.Exec(ctx, stmt); err != nil {
+			return nil, fmt.Errorf("%s: failed to execute statement: %w\nSQL: %s", op, err, stmt)
 		}
 	}
 

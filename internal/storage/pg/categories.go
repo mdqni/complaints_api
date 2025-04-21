@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"complaint_server/internal/domain"
@@ -14,7 +15,7 @@ import (
 func (s *Storage) GetCategories(ctx context.Context) ([]domain.Category, error) {
 	const op = "storage.category.GetCategories"
 	rows, err := s.db.Query(ctx, `
-		SELECT id, title, description, answer
+		SELECT uuid, title, description, answer
 		FROM categories`)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -37,11 +38,11 @@ func (s *Storage) GetCategories(ctx context.Context) ([]domain.Category, error) 
 
 	return categories, nil
 }
-func (s *Storage) GetCategoryById(ctx context.Context, categoryID int) (domain.Category, error) {
+func (s *Storage) GetCategoryById(ctx context.Context, categoryID uuid.UUID) (domain.Category, error) {
 	const op = "storage.category.GetCategoriesByID"
 	query := `
-		SELECT id, title, description, answer
-		FROM categories WHERE id = $1`
+		SELECT uuid, title, description, answer
+		FROM categories WHERE uuid = $1`
 	var category domain.Category
 	err := s.db.QueryRow(ctx, query, categoryID).Scan(
 		&category.ID,
@@ -59,33 +60,33 @@ func (s *Storage) GetCategoryById(ctx context.Context, categoryID int) (domain.C
 
 	return category, nil
 }
-func (s *Storage) CreateCategory(ctx context.Context, category domain.Category) (int64, error) {
+func (s *Storage) CreateCategory(ctx context.Context, category domain.Category) (uuid.UUID, error) {
 	const op = "storage.category.CreateCategory"
-	query := `INSERT INTO categories (title, description, answer) VALUES ($1, $2, $3) RETURNING id`
-	var categoryID int64
-	err := s.db.QueryRow(context.Background(), query, category.Title, category.Description, category.Answer).Scan(&categoryID)
+	query := `INSERT INTO categories (title, description, answer) VALUES ($1, $2, $3) RETURNING uuid`
+	var categoryID uuid.UUID
+	err := s.db.QueryRow(ctx, query, category.Title, category.Description, category.Answer).Scan(&categoryID)
 	if err != nil {
-		return 0, fmt.Errorf("%s: failed to save category: %w", op, err)
+		return uuid.UUID{}, fmt.Errorf("%s: failed to save category: %w", op, err)
 	}
 
 	return categoryID, nil
 }
 
-func (s *Storage) CategoryExists(name string) (bool, error) {
+func (s *Storage) CategoryExists(ctx context.Context, name string) (bool, error) {
 	const op = "storage.category.CategoryExists"
 	query := `SELECT COUNT(1) FROM categories WHERE title = $1`
 	var count int
-	err := s.db.QueryRow(context.Background(), query, name).Scan(&count)
+	err := s.db.QueryRow(ctx, query, name).Scan(&count)
 	if err != nil {
 		return false, fmt.Errorf("%s: failed to check category existence: %w", op, err)
 	}
 	return count > 0, nil
 }
 
-func (s *Storage) DeleteCategoryById(ctx context.Context, index int) error {
+func (s *Storage) DeleteCategoryById(ctx context.Context, id uuid.UUID) error {
 	const op = "storage.category.DeleteCategoryById"
-	query := `DELETE FROM categories WHERE id = $1`
-	_, err := s.db.Exec(ctx, query, index)
+	query := `DELETE FROM categories WHERE uuid = $1`
+	_, err := s.db.Exec(ctx, query, id)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
@@ -95,24 +96,25 @@ func (s *Storage) DeleteCategoryById(ctx context.Context, index int) error {
 	}
 	return nil
 }
-func (s *Storage) UpdateCategory(ctx context.Context, category domain.Category) (int, error) {
+func (s *Storage) UpdateCategory(ctx context.Context, id uuid.UUID, category domain.Category) (uuid.UUID, error) {
 	const op = "storage.category.UpdateCategory"
 
 	query := `
 		UPDATE categories
-		SET title = $1,
-			description = $2,
-			answer = $3
-		WHERE id = $4
+		SET uuid = $1,
+		    title = $2,
+			description = $3,
+			answer = $4
+		WHERE uuid = $5
 	`
 
-	cmdTag, err := s.db.Exec(ctx, query, category.Title, category.Description, category.Answer, category.ID)
+	cmdTag, err := s.db.Exec(ctx, query, category.ID, category.Title, category.Description, category.Answer, id)
 	if err != nil {
-		return 0, fmt.Errorf("%s: failed to update category: %w", op, err)
+		return uuid.UUID{}, fmt.Errorf("%s: failed to update category: %w", op, err)
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		return 0, storage.ErrCategoryNotFound
+		return uuid.UUID{}, storage.ErrCategoryNotFound
 	}
 
 	return category.ID, nil

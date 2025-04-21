@@ -6,23 +6,24 @@ import (
 	"complaint_server/internal/service/complaint"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
+	"github.com/google/uuid"
 	"log/slog"
 	"net/http"
-	"strconv"
 )
 
 // New GetComplaintsByCategoryId godoc
-// @Summary Get complaints by category ID
+// @Summary Get complaints by category UUID
 // @Description Retrieve all complaints that belong to a specific category based on its unique identifier (Category ID).
 // @Tags Complaints
 // @Accept json
 // @Produce json
-// @Param id path int true "Category ID (unique identifier of the category)"
+// @Param id path string true "Category UUID (unique identifier of the category)"
 // @Success 200 {array} domain.Complaint "List of complaints associated with the given category"
 // @Failure 400 {object} response.Response "Invalid category ID format"
 // @Failure 404 {object} response.Response "No complaints found for the given category"
 // @Failure 500 {object} response.Response "Internal server error while fetching complaints"
-// @Router /complaints/category/{id} [get]
+// @Router /categories/{id}/complaints [get]
 func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaints.getByCategoryId.New"
@@ -34,20 +35,21 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			slog.String("url", r.URL.String()),
 		)
 
-		categoryId, err := strconv.Atoi(chi.URLParam(r, "id"))
-		if err != nil {
-			log.Error("incorrect category id format", sl.Err(err))
-			responseData, _ := json.Marshal(response.Response{
-				Message:    "invalid category id format",
-				StatusCode: http.StatusBadRequest,
-				Data:       nil,
-			})
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write(responseData)
+		id := chi.URLParam(r, "id")
+		if id == "" {
+			log.Error("Missing category id")
+			render.JSON(w, r, response.Response{StatusCode: http.StatusBadRequest, Message: "Missing complaint_id"})
 			return
 		}
 
-		result, err := service.GetComplaintsByCategoryId(r.Context(), categoryId)
+		uuid, err := uuid.Parse(id)
+		if err != nil {
+			log.Error(op, sl.Err(err))
+			render.JSON(w, r, response.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
+			return
+		}
+
+		result, err := service.GetComplaintsByCategoryId(r.Context(), uuid)
 		if err != nil {
 			log.Error("failed to get complaints", sl.Err(err))
 			responseData, _ := json.Marshal(response.Response{
@@ -60,7 +62,7 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			return
 		}
 
-		log.Info("Complaints found for category", slog.Int("category_id", categoryId))
+		log.Info("Complaints found for category", slog.Any("category_id", uuid))
 		responseData, _ := json.Marshal(response.Response{
 			Message:    "Complaints fetched successfully",
 			StatusCode: http.StatusOK,

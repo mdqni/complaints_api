@@ -7,19 +7,21 @@ import (
 	service "complaint_server/internal/service/category"
 	"context"
 	"errors"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
 	"net/http"
 )
 
 type Request struct {
-	Id          int    `json:"id"`
-	Title       string `json:"title" validate:"required"`
-	Description string `json:"description" validate:"required"`
-	Answer      string `json:"answer" validate:"required"`
+	Id          uuid.UUID `json:"id"`
+	Title       string    `json:"title" validate:"required"`
+	Description string    `json:"description" validate:"required"`
+	Answer      string    `json:"answer" validate:"required"`
 }
 
 // New @Summary Обновить категорию
@@ -31,7 +33,7 @@ type Request struct {
 // @Success 200 {object} response.Response "Категория успешно обновлена"
 // @Failure 400 {object} response.Response "Ошибка валидации или декодирования данных"
 // @Failure 500 {object} response.Response "Ошибка сервера"
-// @Router /category/{id} [put]
+// @Router /admin/categories/{id} [put]
 func New(ctx context.Context, log *slog.Logger, service *service.CategoryService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.category.update.New"
@@ -71,8 +73,14 @@ func New(ctx context.Context, log *slog.Logger, service *service.CategoryService
 			})
 			return
 		}
-
-		_, err := service.UpdateCategory(r.Context(), domain.Category{
+		categoryId := chi.URLParam(r, "id")
+		if categoryId == "" {
+			log.Error("Missing category id")
+			render.JSON(w, r, response.Response{StatusCode: http.StatusBadRequest, Message: "Missing category id"})
+			return
+		}
+		id, err := uuid.Parse(categoryId)
+		_, err = service.UpdateCategory(r.Context(), id, domain.Category{
 			ID:          req.Id,
 			Title:       req.Title,
 			Description: req.Description,

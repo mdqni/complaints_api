@@ -74,6 +74,7 @@ func main() {
 	log.Debug("Debug message are enabled")
 	rdb := setupRedis(ctx, cfg, log)
 	storage := setupStorage(cfg.ConnString, log)
+	//storage := setupStorage("postgresql://postgres:postgres@localhost:5432/postgres", log)
 	router := setupRouter(ctx, log, cfg, storage, rdb)
 
 	startServer(cfg, router, log)
@@ -120,9 +121,10 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 	_categoryService := categoryService.NewCategoriesService(storage)
 	_adminService := authService.NewAdminService(storage)
 	router.Route("/complaints", func(r chi.Router) {
-		r.With(cache.CacheMiddleware(client, 1*time.Minute, log)).Get("/", getallcomplaint.New(log, _complaintService)) // Получить все компл
-		r.Post("/", create.New(log, _complaintService))                                                                 //Создать компл
-		r.Get("/{id}", get_complaint_by_complaint_id.New(log, _complaintService))                                       // Получить компл по айди
+		r.With(cache.CacheMiddleware(client, 1*time.Minute, log)).
+			Get("/", getallcomplaint.New(log, _complaintService)) // Получить все компл
+		r.Post("/", create.New(log, _complaintService))                           //Создать компл
+		r.Get("/{id}", get_complaint_by_complaint_id.New(log, _complaintService)) // Получить компл по айди
 		r.Get("/can-submit", can_submit.New(log, _complaintService))
 		r.Get("/by-token", get_complaints_by_token.New(log, _complaintService))
 	})
@@ -153,12 +155,20 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 }
 
 func startServer(cfg *config.Config, router chi.Router, log *slog.Logger) {
+	timeout, err := time.ParseDuration(cfg.HTTPServer.Timeout)
+	if err != nil {
+		log.Error("invalid HTTP_TIMEOUT: %v", err)
+	}
+	idleTimeout, err := time.ParseDuration(cfg.HTTPServer.IdleTimeout)
+	if err != nil {
+		log.Error("invalid HTTP_TIMEOUT: %v", err)
+	}
 	srv := &http.Server{
-		Addr:         cfg.Address,
+		Addr:         cfg.HTTPServer.Address,
 		Handler:      router,
-		ReadTimeout:  cfg.HTTPServer.Timeout,
-		WriteTimeout: cfg.HTTPServer.Timeout,
-		IdleTimeout:  cfg.IdleTimeout,
+		ReadTimeout:  timeout,
+		WriteTimeout: timeout,
+		IdleTimeout:  idleTimeout,
 	}
 
 	done := make(chan os.Signal, 1)
@@ -170,7 +180,7 @@ func startServer(cfg *config.Config, router chi.Router, log *slog.Logger) {
 		}
 	}()
 
-	log.Info("server started", slog.String("address", cfg.Address))
+	log.Info("server started", slog.String("address", cfg.HTTPServer.Address))
 	<-done
 	log.Info("stopping server gracefully")
 

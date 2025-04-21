@@ -2,12 +2,13 @@ package domain
 
 import (
 	"database/sql"
+	"github.com/google/uuid"
 	"time"
 )
 
 type Complaint struct {
-	ID        int            `json:"id"`
-	Barcode   string         `json:"barcode"`
+	ID        uuid.UUID      `json:"id"`
+	Barcode   int            `json:"barcode"`
 	Category  Category       `json:"category"`
 	Message   string         `json:"message"`
 	Status    string         `json:"status"` // "approved" or "rejected", default is "pending"

@@ -6,9 +6,10 @@ import (
 	service "complaint_server/internal/service/category"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/render"
+	"github.com/google/uuid"
 	"log/slog"
 	"net/http"
-	"strconv"
 )
 
 // New @Summary Получить категорию по ID
@@ -16,7 +17,7 @@ import (
 // @Tags Categories
 // @Accept json
 // @Produce json
-// @Param id path int true "Category ID (unique identifier of the category)"
+// @Param id path string true "Category ID (unique identifier of the category)"
 // @Success 200 {object} domain.Category "Category details"
 // @Failure 400 {object} response.Response "Invalid ID format"
 // @Failure 500 {object} response.Response "Internal server error while fetching the category"
@@ -33,20 +34,14 @@ func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 		)
 		ctx := r.Context()
 
-		id, err := strconv.Atoi(chi.URLParam(r, "id"))
-		if err != nil {
-			log.Error("incorrect id in params", sl.Err(err))
-			responseData, _ := json.Marshal(response.Response{
-				Message:    "incorrect id in params",
-				StatusCode: http.StatusBadRequest,
-				Data:       nil,
-			})
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write(responseData)
+		id := chi.URLParam(r, "id")
+		if id == "" {
+			log.Error("Missing complaint_id")
+			render.JSON(w, r, response.Response{StatusCode: http.StatusBadRequest, Message: "Missing complaint_id"})
 			return
 		}
-
-		result, err := service.GetCategoryById(ctx, id)
+		uuid, err := uuid.Parse(id)
+		result, err := service.GetCategoryById(ctx, uuid)
 		if err != nil {
 			log.Error(op, sl.Err(err))
 			responseData, _ := json.Marshal(response.Response{
@@ -59,7 +54,7 @@ func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 			return
 		}
 
-		log.Info("Category found", slog.Int("category_id", id))
+		log.Info("Category found", slog.Any("category_id", uuid))
 		responseData, _ := json.Marshal(response.Response{
 			Message:    "Category fetched successfully",
 			StatusCode: http.StatusOK,

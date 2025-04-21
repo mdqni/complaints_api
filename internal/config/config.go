@@ -3,47 +3,38 @@ package config
 import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"log"
-	"os"
-	"time"
 )
 
 type Config struct {
-	Env         string `yaml:"env" env-default:"local"`
-	ConnString  string `yaml:"connString" env-required:"true"`
-	RedisClient `yaml:"redisClient"`
-	HTTPServer  `yaml:"http_server"`
+	Env         string `env:"ENV" env-default:"local"`
+	ConnString  string `env:"CONN_STRING" env-default:"postgres://admin:Aitusa2025!@34.89.141.175:1005/complaints?sslmode=disable"`
+	RedisClient RedisClient
+	HTTPServer  HTTPServer
 }
+
 type RedisClient struct {
-	Addr        string        `yaml:"addr" env-default:"127.0.0.1:6379"`
-	User        string        `yaml:"user"`
-	Password    string        `yaml:"pass" env-default:""`
-	DB          int           `yaml:"db" env-default:"0"`
-	MaxRetries  int           `yaml:"max_retries" env-default:"3"`
-	DialTimeout time.Duration `yaml:"dial_timeout" env-default:"5s"`
-	Timeout     time.Duration `yaml:"timeout" env-default:"10s"`
+	Addr        string `env:"REDIS_ADDR" env-default:"127.0.0.1:6379"`
+	User        string `env:"REDIS_USER" env-default:"default"`
+	Password    string `env:"REDIS_PASS" env-default:""`
+	DB          int    `env:"REDIS_DB" env-default:"0"`
+	MaxRetries  int    `env:"REDIS_MAX_RETRIES" env-default:"3"`
+	DialTimeout string `env:"REDIS_DIAL_TIMEOUT" env-default:"5s"`
+	Timeout     string `env:"REDIS_TIMEOUT" env-default:"10s"`
 }
+
 type HTTPServer struct {
-	Address     string        `yaml:"address" env-default:"localhost:8080"`
-	Timeout     time.Duration `yaml:"timeout" env-default:"4s"`
-	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
-	User        string        `yaml:"user" env-required:"true"`
-	Password    string        `yaml:"password" env-required:"true" env:"HTTP_SERVER_PASSWORD"`
+	Address     string `env:"HTTP_ADDRESS" env-default:"localhost:8080"`
+	Timeout     string `env:"HTTP_TIMEOUT" env-default:"4s"`
+	IdleTimeout string `env:"HTTP_IDLE_TIMEOUT" env-default:"60s"`
+	User        string `env:"HTTP_USER"`
+	Password    string `env:"HTTP_PASSWORD"`
 }
 
 func MustLoad() *Config {
-	configPath := os.Getenv("CONFIG_PATH")
-	if configPath == "" {
-		configPath = "./config/local.yaml"
-	}
-
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		log.Fatalf("CONFIG_PATH does not exist: %s", configPath)
-	}
-
 	var cfg Config
 
-	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
-		log.Fatalf("cannot read config: %s", err)
+	if err := cleanenv.ReadEnv(&cfg); err != nil {
+		log.Fatalf("cannot read config from env: %s", err)
 	}
 	return &cfg
 }

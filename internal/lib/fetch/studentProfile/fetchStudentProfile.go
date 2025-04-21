@@ -3,20 +3,21 @@ package studentProfile
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 )
 
 type Group struct {
 	Name string `json:"name"`
 }
-type Student struct {
-	Token string `json:"token"`
 
-	Barcode string `json:"barcode"`
+type Student struct {
+	Token   string `json:"token"`
+	Barcode int    `json:"barcode"`
 	Name    string `json:"name"`
 	Surname string `json:"surname"`
-
-	Group Group `json:"group"`
+	Group   Group  `json:"group"`
 }
 
 func FetchStudentProfile(token string) (*Student, error) {
@@ -25,7 +26,10 @@ func FetchStudentProfile(token string) (*Student, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+token)
+
+	authHeader := "Bearer " + token
+	req.Header.Set("Authorization", authHeader)
+	fmt.Println("Auth header:", authHeader)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -33,15 +37,21 @@ func FetchStudentProfile(token string) (*Student, error) {
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	fmt.Printf("Status: %d\nResponse Body: %s\n", resp.StatusCode, string(bodyBytes))
+
 	if resp.StatusCode == 400 || resp.StatusCode == 401 {
-		return nil, errors.New("unauthorized")
+		return nil, errors.New("unauthorized: invalid or expired token")
+	}
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
 	}
 
 	var res struct {
 		Data Student `json:"data"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		return nil, err
+	if err := json.Unmarshal(bodyBytes, &res); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
 	return &res.Data, nil
