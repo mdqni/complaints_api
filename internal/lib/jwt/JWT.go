@@ -25,7 +25,7 @@ func EncodeJWT(jwtSecret string, tokenString string) (domain.Student, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
-		return jwtSecret, nil
+		return []byte(jwtSecret), nil
 	})
 	if err != nil {
 		return student, err
