@@ -32,7 +32,7 @@ func (s *Storage) SaveComplaint(ctx context.Context, barcode int, categoryID uui
 }
 
 func (s *Storage) IsOwnerOfComplaint(ctx context.Context, id uuid.UUID, barcode int) (bool, error) {
-	query := `SELECT barcode FROM complaints WHERE id = $1`
+	query := `SELECT barcode FROM complaints WHERE uuid = $1`
 	var complaintBarcode int
 	err := s.db.QueryRow(ctx, query, id).Scan(&complaintBarcode)
 	if err != nil {
