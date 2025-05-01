@@ -1,4 +1,4 @@
-package get_complaint_by_complaint_id
+package getComplaintByComplaintId
 
 import (
 	"complaint_server/internal/lib/api/response"

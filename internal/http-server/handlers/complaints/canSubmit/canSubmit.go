@@ -1,4 +1,4 @@
-package can_submit
+package canSubmit
 
 import (
 	"complaint_server/internal/lib/api/response"

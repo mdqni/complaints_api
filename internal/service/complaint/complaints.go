@@ -85,6 +85,11 @@ func (s *ComplaintService) CanSubmitByBarcode(ctx context.Context, barcode int) 
 	return s.storage.CheckComplaintLimit(ctx, barcode)
 }
 
+func (s *ComplaintService) CanUserDeleteComplaintById(ctx context.Context, complaintID uuid.UUID, barcode int) (bool, error) {
+	can, err := s.storage.IsOwnerOfComplaint(ctx, complaintID, barcode)
+	return can, err
+}
+
 // GetComplaintsByBarcode
 func (s *ComplaintService) GetComplaintsByBarcode(ctx context.Context, barcode int) ([]domain.Complaint, error) {
 	complaints, err := s.storage.GetComplaintsByBarcode(ctx, barcode)

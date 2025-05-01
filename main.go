@@ -8,13 +8,14 @@ import (
 	categoriesGetAll "complaint_server/internal/http-server/handlers/category/get_all"
 	"complaint_server/internal/http-server/handlers/category/get_by_id"
 	updateCategory "complaint_server/internal/http-server/handlers/category/update"
-	"complaint_server/internal/http-server/handlers/complaints/can_submit"
+	"complaint_server/internal/http-server/handlers/complaints/canSubmit"
 	"complaint_server/internal/http-server/handlers/complaints/create"
-	deleteComplaint "complaint_server/internal/http-server/handlers/complaints/delete"
-	getallcomplaint "complaint_server/internal/http-server/handlers/complaints/get_all"
-	"complaint_server/internal/http-server/handlers/complaints/get_complaint_by_complaint_id"
-	"complaint_server/internal/http-server/handlers/complaints/get_complaints_by_category_id"
-	"complaint_server/internal/http-server/handlers/complaints/get_complaints_by_token"
+	deleteComplaint "complaint_server/internal/http-server/handlers/complaints/deleteByAdmin"
+	deleteComplaintByOwner "complaint_server/internal/http-server/handlers/complaints/deleteByOwner"
+	"complaint_server/internal/http-server/handlers/complaints/getComplaintByComplaintId"
+	"complaint_server/internal/http-server/handlers/complaints/getComplaintsByCategoryId"
+	"complaint_server/internal/http-server/handlers/complaints/getComplaintsByToken"
+	getAllComplaint "complaint_server/internal/http-server/handlers/complaints/get_all"
 	"complaint_server/internal/http-server/handlers/complaints/update"
 	"complaint_server/internal/http-server/middleware/admin_only"
 	"complaint_server/internal/http-server/middleware/cache"
@@ -120,31 +121,30 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 	_adminService := authService.NewAdminService(storage)
 	router.Route("/complaints", func(r chi.Router) {
 		r.With(cache.CacheMiddleware(client, 1*time.Minute, log)).
-			Get("/", getallcomplaint.New(log, _complaintService)) // Получить все компл
-		r.Post("/", create.New(log, _complaintService))                           //Создать компл
-		r.Get("/{id}", get_complaint_by_complaint_id.New(log, _complaintService)) // Получить компл по айди
-		r.Get("/can-submit", can_submit.New(log, _complaintService))
-		r.Get("/by-token", get_complaints_by_token.New(cfg, log, _complaintService))
+			Get("/", getAllComplaint.New(log, _complaintService))
+		r.Post("/", create.New(log, _complaintService))
+		r.Get("/{id}", getComplaintByComplaintId.New(log, _complaintService))
+		r.Get("/can-submit", canSubmit.New(log, _complaintService))
+		r.Get("/by-token", getComplaintsByToken.New(cfg, log, _complaintService))
+		r.Delete("/{id}", deleteComplaintByOwner.New(ctx, log, _complaintService, cfg, client))
 	})
 	router.Route("/categories", func(r chi.Router) {
 		r.Use(cache.CacheMiddleware(client, time.Minute*1, log))
 		r.Get("/", categoriesGetAll.New(log, _categoryService))
-		r.Get("/{id}", categories_get_by_id.New(log, _categoryService))
-		r.Get("/{id}/complaints", get_complaints_by_category_id.New(log, _complaintService)) //Получить компл по категории айди
+		r.Get("/{id}", categoriesGetById.New(log, _categoryService))
+		r.Get("/{id}/complaints", getComplaintsByCategoryId.New(log, _complaintService))
 	})
 	router.Get("/docs/*", httpSwagger.WrapHandler)
 
 	router.Route("/admin", func(r chi.Router) {
 
 		r.Use(admin_only.AdminOnlyMiddleware(log, cfg, _adminService))
-		//Complaint
 		r.Put("/complaints/{id}", update.New(ctx, log, _complaintService, client))
-		r.Delete("/complaints/{id}", deleteComplaint.New(ctx, log, _complaintService, client)) //Удалить компл
+		r.Delete("/complaints/{id}", deleteComplaint.New(ctx, log, _complaintService, client))
 
-		//Category
-		r.Post("/categories", categoriesCreate.New(ctx, log, _categoryService, client)) //Создание категории
+		r.Post("/categories", categoriesCreate.New(ctx, log, _categoryService, client))
 		r.Put("/categories/{id}", updateCategory.New(ctx, log, _categoryService, client))
-		r.Delete("/categories/{id}", deleteCategoryById.New(ctx, log, _categoryService, client)) //Удалить категории по ID
+		r.Delete("/categories/{id}", deleteCategoryById.New(ctx, log, _categoryService, client))
 	})
 }
 

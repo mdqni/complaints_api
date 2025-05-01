@@ -1,4 +1,4 @@
-package get_complaints_by_category_id
+package getComplaintsByCategoryId
 
 import (
 	"complaint_server/internal/lib/api/response"

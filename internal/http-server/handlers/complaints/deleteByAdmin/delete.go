@@ -1,4 +1,4 @@
-package deleteComplaint
+package deleteComplaintByAdmin
 
 import (
 	"complaint_server/internal/lib/api/response"
@@ -26,7 +26,7 @@ import (
 // @Router /admin/complaints/{id} [delete]
 func New(context context.Context, log *slog.Logger, service *service.ComplaintService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.complaint.delete.New"
+		const op = "handlers.complaint.deleteByAdmin.New"
 		log := log.With(
 			slog.String("op", op),
 			slog.String("url", r.URL.String()))
@@ -52,8 +52,8 @@ func New(context context.Context, log *slog.Logger, service *service.ComplaintSe
 			})
 			return
 		}
-
-		err = service.DeleteComplaintById(r.Context(), uuid)
+		ctx := r.Context()
+		err = service.DeleteComplaintById(ctx, uuid)
 		if errors.Is(err, storage.ErrComplaintNotFound) {
 			log.Error("complaint not found", sl.Err(err))
 			render.JSON(w, r, response.Response{
@@ -65,7 +65,7 @@ func New(context context.Context, log *slog.Logger, service *service.ComplaintSe
 		}
 
 		if err != nil {
-			log.Error("failed to delete complaint", sl.Err(err))
+			log.Error("failed to deleteByAdmin complaint", sl.Err(err))
 			render.JSON(w, r, response.Response{
 				Message:    "Internal error while deleting complaint",
 				StatusCode: http.StatusInternalServerError,
@@ -74,10 +74,9 @@ func New(context context.Context, log *slog.Logger, service *service.ComplaintSe
 			return
 		}
 
-		client.Del(r.Context(), "cache:/complaints")
 		log.Info("complaint successfully deleted")
 		client.Del(context, fmt.Sprintf("cache:/complaints"))
-		// Успешный ответ
+
 		render.JSON(w, r, response.Response{
 			Message:    "Complaint successfully deleted",
 			StatusCode: http.StatusOK,

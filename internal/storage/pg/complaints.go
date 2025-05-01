@@ -31,6 +31,19 @@ func (s *Storage) SaveComplaint(ctx context.Context, barcode int, categoryID uui
 	return complaintID, answer, nil
 }
 
+func (s *Storage) IsOwnerOfComplaint(ctx context.Context, id uuid.UUID, barcode int) (bool, error) {
+	query := `SELECT barcode FROM complaints WHERE id = $1`
+	var complaintBarcode int
+	err := s.db.QueryRow(ctx, query, id).Scan(&complaintBarcode)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, storage.ErrComplaintNotFound
+		}
+		return false, fmt.Errorf("failed to check complaint ownership: %w", err)
+	}
+	return complaintBarcode == barcode, nil
+}
+
 // GetComplaintById возвращает жалобу по её ID.
 func (s *Storage) GetComplaintByUUID(ctx context.Context, complaintID uuid.UUID) (domain.Complaint, error) {
 	const op = "storage.postgres.GetComplaintByUUID"

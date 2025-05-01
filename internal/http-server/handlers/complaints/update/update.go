@@ -80,7 +80,7 @@ func New(context context.Context, log *slog.Logger, service *service.ComplaintSe
 		log.Info("complaint updated", slog.Any("id", id))
 		err = client.Del(ctx, "cache:/complaints").Err()
 		if err != nil {
-			log.Error("failed to delete cache", sl.Err(err))
+			log.Error("failed to deleteByAdmin cache", sl.Err(err))
 		}
 		client.Del(context, fmt.Sprintf("cache:/complaints/%d", req.Complaint.ID))
 		// Send success response

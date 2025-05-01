@@ -1,4 +1,4 @@
-package get_complaints_by_token
+package getComplaintsByToken
 
 import (
 	"complaint_server/internal/config"

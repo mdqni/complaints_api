@@ -28,7 +28,7 @@ import (
 // @Router       /admin/categories/{id} [delete]
 func New(ctx context.Context, log *slog.Logger, service *categoryService.CategoryService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.complaint.delete.New"
+		const op = "handlers.complaint.deleteByAdmin.New"
 
 		log := log.With(
 			slog.String("op", op),
@@ -47,6 +47,7 @@ func New(ctx context.Context, log *slog.Logger, service *categoryService.Categor
 			render.JSON(w, r, response.Response{StatusCode: http.StatusInternalServerError, Message: err.Error()})
 			return
 		}
+
 		err = service.DeleteCategoryById(r.Context(), uuid_)
 
 		if errors.Is(err, storage.ErrCategoryNotFound) {
@@ -62,7 +63,7 @@ func New(ctx context.Context, log *slog.Logger, service *categoryService.Categor
 			return
 		}
 		if err != nil {
-			log.Info("failed to delete category", sl.Err(err))
+			log.Info("failed to deleteByAdmin category", sl.Err(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			render.JSON(w, r, response.Response{StatusCode: http.StatusInternalServerError, Message: err.Error(), Data: nil})
 			return
