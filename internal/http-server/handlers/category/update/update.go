@@ -5,8 +5,11 @@ import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
 	service "complaint_server/internal/service/category"
+	"complaint_server/internal/storage"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
@@ -86,6 +89,17 @@ func New(ctx context.Context, log *slog.Logger, service *service.CategoryService
 			Description: req.Description,
 			Answer:      req.Answer,
 		})
+		if errors.Is(err, storage.ErrCategoryNotFound) {
+			log.Error(op, sl.Err(err))
+			responseData, _ := json.Marshal(response.Response{
+				Message:    fmt.Sprintf("category with %d not found", id),
+				StatusCode: http.StatusNotFound,
+				Data:       nil,
+			})
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write(responseData)
+			return
+		}
 		if err != nil {
 			log.Error("failed to update category", sl.Err(err))
 			render.JSON(w, r, response.Response{
@@ -96,7 +110,6 @@ func New(ctx context.Context, log *slog.Logger, service *service.CategoryService
 			return
 		}
 
-		// Очистка кэша
 		client.Del(ctx, "cache:/categories")
 
 		render.JSON(w, r, response.Response{

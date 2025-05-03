@@ -3,7 +3,9 @@ package canSubmit
 import (
 	"complaint_server/internal/lib/api/response"
 	service "complaint_server/internal/service/complaint"
+	"complaint_server/internal/storage"
 	"encoding/json"
+	"errors"
 	"github.com/go-chi/render"
 	"log/slog"
 	"net/http"
@@ -37,8 +39,17 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 				StatusCode: http.StatusBadRequest,
 			})
 		}
+		canSubmit, err := service.CanSubmitByBarcode(r.Context(), bcode)
+		if errors.Is(err, storage.ErrLimitOneComplaintInOneHour) {
+			log.Error("Can submit error: ", storage.ErrLimitOneComplaintInOneHour.Error())
+			responseData, _ := json.Marshal(response.Response{
+				StatusCode: http.StatusTooManyRequests,
+				Data:       map[string]interface{}{"canSubmit": false},
+			})
+			_, _ = w.Write(responseData)
+			return
 
-		canSubmit, _ := service.CanSubmitByBarcode(r.Context(), bcode)
+		}
 		responseData, _ := json.Marshal(response.Response{
 			StatusCode: http.StatusOK,
 			Data:       map[string]interface{}{"canSubmit": canSubmit},

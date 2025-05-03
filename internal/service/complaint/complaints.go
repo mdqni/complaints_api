@@ -41,10 +41,7 @@ func (s *ComplaintService) CreateComplaint(ctx context.Context, barcode int, cat
 // GetComplaintById получает жалобу по ID
 func (s *ComplaintService) GetComplaintByUUID(ctx context.Context, complaintID uuid.UUID) (domain.Complaint, error) {
 	complaint, err := s.storage.GetComplaintByUUID(ctx, complaintID)
-	if err != nil {
-		return domain.Complaint{}, err
-	}
-	return complaint, nil
+	return complaint, err
 }
 
 // GetAllComplaints получает все жалобы

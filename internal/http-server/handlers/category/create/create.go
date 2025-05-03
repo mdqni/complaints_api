@@ -5,6 +5,7 @@ import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
 	service "complaint_server/internal/service/category"
+	"complaint_server/internal/storage"
 	"context"
 	"errors"
 	"github.com/go-chi/chi/v5/middleware"
@@ -72,12 +73,27 @@ func New(ctx context.Context, log *slog.Logger, service *service.CategoryService
 			return
 		}
 
-		// Создание категории
 		categoryID, err := service.CreateCategory(r.Context(), domain.Category{
 			Title:       req.Title,
 			Description: req.Description,
 			Answer:      req.Answer,
 		})
+		if errors.Is(err, storage.ErrDBConnection) {
+			log.Error("db connection error", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    storage.ErrDBConnection.Error(),
+				StatusCode: http.StatusInternalServerError,
+				Data:       nil,
+			})
+		}
+		if errors.Is(err, storage.ErrCreateCategory) {
+			log.Error("failed to create category", sl.Err(err))
+			render.JSON(w, r, response.Response{
+				Message:    "Error ",
+				StatusCode: http.StatusConflict,
+				Data:       nil,
+			})
+		}
 		if err != nil {
 			log.Error("failed to save category", sl.Err(err))
 			render.JSON(w, r, response.Response{

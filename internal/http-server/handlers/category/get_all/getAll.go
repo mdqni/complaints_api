@@ -41,8 +41,6 @@ func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 			})
 			return
 		}
-
-		// Если все нормально, сериализуем результат в JSON
 		log.Info("Categories found")
 
 		// Ручная сериализация JSON с ensure_ascii=false

@@ -65,6 +65,12 @@ func (s *Storage) CreateCategory(ctx context.Context, category domain.Category) 
 	query := `INSERT INTO categories (title, description, answer) VALUES ($1, $2, $3) RETURNING uuid`
 	var categoryID uuid.UUID
 	err := s.db.QueryRow(ctx, query, category.Title, category.Description, category.Answer).Scan(&categoryID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return uuid.Nil, storage.ErrCategoryNotFound
+	}
+	if errors.Is(err, sql.ErrConnDone) {
+		return uuid.Nil, storage.ErrDBConnection
+	}
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("%s: failed to save category: %w", op, err)
 	}
@@ -109,12 +115,11 @@ func (s *Storage) UpdateCategory(ctx context.Context, id uuid.UUID, category dom
 	`
 
 	cmdTag, err := s.db.Exec(ctx, query, category.ID, category.Title, category.Description, category.Answer, id)
-	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("%s: failed to update category: %w", op, err)
-	}
-
 	if cmdTag.RowsAffected() == 0 {
 		return uuid.UUID{}, storage.ErrCategoryNotFound
+	}
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("%s: failed to update category: %w", op, err)
 	}
 
 	return category.ID, nil

@@ -4,7 +4,6 @@ import (
 	"complaint_server/internal/domain"
 	"complaint_server/internal/storage/pg"
 	"context"
-	"fmt"
 	"github.com/google/uuid"
 )
 
@@ -18,18 +17,13 @@ func NewCategoriesService(strg *pg.Storage) *CategoryService {
 
 // CreateCategory создаёт категорию
 func (s *CategoryService) CreateCategory(ctx context.Context, category domain.Category) (uuid.UUID, error) {
-	// Сохраняем жалобу
 	answer, err := s.storage.CreateCategory(ctx, category)
-	if err != nil {
-		return answer, fmt.Errorf("failed to save category: %w", err)
-	}
 
-	return answer, nil
+	return answer, err
 }
 
 // UpdateCategory обновляет категорию
 func (s *CategoryService) UpdateCategory(ctx context.Context, uuid_ uuid.UUID, category domain.Category) (uuid.UUID, error) {
-	const op = "storage.category.UpdateCategory"
 	id, err := s.storage.UpdateCategory(ctx, uuid_, category)
 	if err != nil {
 		return uuid.UUID{}, err
@@ -49,10 +43,7 @@ func (s *CategoryService) GetCategoryById(ctx context.Context, categoryId uuid.U
 // GetCategories получает все жалобы
 func (s *CategoryService) GetCategories(ctx context.Context) ([]domain.Category, error) {
 	categories, err := s.storage.GetCategories(ctx)
-	if err != nil {
-		return []domain.Category{}, err
-	}
-	return categories, nil
+	return categories, err
 }
 
 // DeleteCategoryById  удаляет жалобу

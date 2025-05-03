@@ -63,10 +63,8 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	//Init Logger
 	cfg := config.MustLoad()
 	log := setupLogger(cfg.Env)
-	//log.Info(password) Admin
 	log.Info(
 		"starting complaints server",
 		slog.String("env", cfg.Env),
@@ -100,7 +98,6 @@ func setupStorage(connString string, log *slog.Logger) *pg.Storage {
 func setupRouter(ctx context.Context, log *slog.Logger, cfg *config.Config, storage *pg.Storage, client *redis.Client) chi.Router {
 	router := chi.NewRouter()
 
-	// Middleware
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer, httprate.Limit(50, 1*time.Minute))
 	router.Use(mwLogger.New(log))
 	router.Use(cors.Handler(cors.Options{
@@ -110,7 +107,6 @@ func setupRouter(ctx context.Context, log *slog.Logger, cfg *config.Config, stor
 		AllowCredentials: true,
 	}))
 
-	// Routes
 	setupRoutes(ctx, cfg, router, log, storage, client)
 	return router
 }
@@ -137,7 +133,6 @@ func setupRoutes(ctx context.Context, cfg *config.Config, router chi.Router, log
 	router.Get("/docs/*", httpSwagger.WrapHandler)
 
 	router.Route("/admin", func(r chi.Router) {
-
 		r.Use(admin_only.AdminOnlyMiddleware(log, cfg, _adminService))
 		r.Put("/complaints/{id}", update.New(ctx, log, _complaintService, client))
 		r.Delete("/complaints/{id}", deleteComplaint.New(ctx, log, _complaintService, client))

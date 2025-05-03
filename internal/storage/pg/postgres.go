@@ -21,13 +21,10 @@ func New(connString string) (*Storage, error) {
 	}
 
 	statements := []string{
-		// Включаем расширение для UUID
 		`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`,
 
-		// Устанавливаем схему
 		`SET search_path TO public;`,
 
-		// ENUM тип для статуса жалоб
 		`DO $$
 		BEGIN
 			IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'complaint_status') THEN
@@ -36,7 +33,6 @@ func New(connString string) (*Storage, error) {
 		END
 		$$;`,
 
-		// Таблица категорий
 		`CREATE TABLE IF NOT EXISTS categories (
 			uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			title TEXT NOT NULL UNIQUE,
@@ -44,7 +40,6 @@ func New(connString string) (*Storage, error) {
 			answer TEXT NOT NULL
 		);`,
 
-		// Таблица жалоб
 		`CREATE TABLE IF NOT EXISTS complaints (
 			uuid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			barcode INTEGER NOT NULL,
@@ -57,7 +52,6 @@ func New(connString string) (*Storage, error) {
 			FOREIGN KEY (category_id) REFERENCES categories(uuid)
 		);`,
 
-		// Таблица админов
 		`CREATE TABLE IF NOT EXISTS admins (
 			id SERIAL PRIMARY KEY,
 			barcode INTEGER UNIQUE NOT NULL

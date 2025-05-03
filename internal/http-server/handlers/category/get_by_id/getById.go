@@ -4,7 +4,10 @@ import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/logger/sl"
 	service "complaint_server/internal/service/category"
+	"complaint_server/internal/storage"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
@@ -42,6 +45,17 @@ func New(log *slog.Logger, service *service.CategoryService) http.HandlerFunc {
 		}
 		uuid, err := uuid.Parse(id)
 		result, err := service.GetCategoryById(ctx, uuid)
+		if errors.Is(err, storage.ErrCategoryNotFound) {
+			log.Error(op, sl.Err(err))
+			responseData, _ := json.Marshal(response.Response{
+				Message:    fmt.Sprintf("category with %d not found", uuid),
+				StatusCode: http.StatusNotFound,
+				Data:       nil,
+			})
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write(responseData)
+			return
+		}
 		if err != nil {
 			log.Error(op, sl.Err(err))
 			responseData, _ := json.Marshal(response.Response{

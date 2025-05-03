@@ -53,14 +53,16 @@ func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
 			render.JSON(w, r, response.Error("complaint with this id not found", http.StatusNotFound))
 			return
 		}
+		if errors.Is(err, storage.ErrScanFailure) {
+			log.Error("complaint scan failure", sl.Err(err))
+			render.JSON(w, r, response.Response{StatusCode: http.StatusInternalServerError, Message: err.Error()})
+			return
+		}
 		if err != nil {
 			log.Error(op, sl.Err(err))
 			render.JSON(w, r, response.Error("internal error", http.StatusInternalServerError))
 			return
 		}
-
-		log.Info("complaint found")
-
 		responseData, _ := json.Marshal(response.Response{
 			StatusCode: http.StatusOK,
 			Data:       result,

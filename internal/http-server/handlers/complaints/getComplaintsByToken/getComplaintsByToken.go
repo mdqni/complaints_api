@@ -5,7 +5,9 @@ import (
 	"complaint_server/internal/lib/api/response"
 	"complaint_server/internal/lib/jwt"
 	service "complaint_server/internal/service/complaint"
+	"complaint_server/internal/storage"
 	"encoding/json"
+	"errors"
 	"github.com/go-chi/render"
 	"log/slog"
 	"net/http"
@@ -50,7 +52,11 @@ func New(cfg *config.Config, log *slog.Logger, service *service.ComplaintService
 		}
 
 		complaints, err := service.GetComplaintsByBarcode(r.Context(), profile.Barcode)
-		log.Error("scan error", "err", err)
+		if errors.Is(err, storage.ErrComplaintNotFound) {
+			render.JSON(w, r, response.Response{
+				Message:    "User has no complaints",
+				StatusCode: http.StatusOK})
+		}
 		if err != nil {
 			log.Error("failed to get complaints", "err", err)
 			render.JSON(w, r, response.Response{

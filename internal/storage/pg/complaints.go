@@ -11,9 +11,7 @@ import (
 	"time"
 )
 
-// SaveComplaint сохраняет новую жалобу в базе данных.
 func (s *Storage) SaveComplaint(ctx context.Context, barcode int, categoryID uuid.UUID, message string) (uuid.UUID, string, error) {
-	// Сохраняем жалобу
 	query := `INSERT INTO complaints (barcode, category_id, message) VALUES ($1, $2, $3) RETURNING uuid`
 	var complaintID uuid.UUID
 	err := s.db.QueryRow(ctx, query, barcode, categoryID, message).Scan(&complaintID)
@@ -21,7 +19,6 @@ func (s *Storage) SaveComplaint(ctx context.Context, barcode int, categoryID uui
 		return uuid.UUID{}, "", fmt.Errorf("failed to save complaint: %w", err)
 	}
 
-	// Получаем ответ из категории
 	var answer string
 	err = s.db.QueryRow(ctx, `SELECT answer FROM categories WHERE uuid = $1`, categoryID).Scan(&answer)
 	if err != nil {
@@ -44,10 +41,8 @@ func (s *Storage) IsOwnerOfComplaint(ctx context.Context, id uuid.UUID, barcode 
 	return complaintBarcode == barcode, nil
 }
 
-// GetComplaintById возвращает жалобу по её ID.
 func (s *Storage) GetComplaintByUUID(ctx context.Context, complaintID uuid.UUID) (domain.Complaint, error) {
 	const op = "storage.postgres.GetComplaintByUUID"
-
 	query := `
 		SELECT c.uuid, c.barcode, c.message, c.status, c.created_at, c.answer,
 		       cat.uuid, cat.title, cat.description, cat.answer
@@ -71,11 +66,12 @@ func (s *Storage) GetComplaintByUUID(ctx context.Context, complaintID uuid.UUID)
 		&category.Answer,
 	)
 
-	if errors.Is(err, sql.ErrNoRows) {
-		return domain.Complaint{}, storage.ErrComplaintNotFound
-	}
 	if err != nil {
-		return domain.Complaint{}, fmt.Errorf("%s: %w", op, err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.Complaint{}, storage.ErrComplaintNotFound
+		}
+		fmt.Println("op", op, "err:", err)
+		return domain.Complaint{}, storage.ErrScanFailure
 	}
 
 	complaint.Category = category
@@ -179,11 +175,9 @@ func (s *Storage) GetComplaintsByCategoryId(ctx context.Context, categoryId uuid
 	return complaints, nil
 }
 
-// UpdateComplaintStatus обновляет статус жалобы.
 func (s *Storage) UpdateComplaintStatus(ctx context.Context, complaintID uuid.UUID, status domain.ComplaintStatus, answer string) error {
 	const op = "storage.postgres.UpdateComplaintStatus"
 
-	// Проверяем, существует ли жалоба с таким UUID
 	var exists bool
 	err := s.db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM complaints WHERE uuid = $1)", complaintID).Scan(&exists)
 	if err != nil {
@@ -194,22 +188,18 @@ func (s *Storage) UpdateComplaintStatus(ctx context.Context, complaintID uuid.UU
 		return storage.ErrComplaintNotFound
 	}
 
-	// Выполняем обновление статуса
 	query := `
 		UPDATE complaints
 		SET status = $1, updated_at = CURRENT_TIMESTAMP, answer = $3
 		WHERE uuid = $2`
 
-	// Выполняем запрос на обновление
 	result, err := s.db.Exec(ctx, query, status, complaintID, answer)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Проверяем, были ли обновлены строки
 	rowsAffected := result.RowsAffected()
 
-	// Если строки не обновлены, значит жалоба с таким ID не существует
 	if rowsAffected == 0 {
 		return storage.ErrComplaintNotFound
 	}
@@ -260,11 +250,9 @@ WHERE c.barcode = $1`, barcode)
 	return complaints, nil
 }
 
-// CheckComplaintLimit проверяет временной лимит для отправки жалоб.
 func (s *Storage) CheckComplaintLimit(ctx context.Context, barcode int) (bool, error) {
 	const op = "storage.postgres.CheckComplaintLimit"
 
-	// Получаем время последней жалобы от пользователя
 	var lastComplaintTime time.Time
 	err := s.db.QueryRow(ctx, `
 		SELECT created_at 
@@ -273,23 +261,20 @@ func (s *Storage) CheckComplaintLimit(ctx context.Context, barcode int) (bool, e
 		ORDER BY created_at DESC 
 		LIMIT 1`, barcode).Scan(&lastComplaintTime)
 
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return false, fmt.Errorf("%s: %w", op, err)
-	}
-
 	if errors.Is(err, sql.ErrNoRows) {
 		return true, nil
 	}
 
-	// Проверяем, прошло ли достаточно времени с последней жалобы (например, 1 час)
 	if time.Since(lastComplaintTime) < time.Hour {
 		return false, storage.ErrLimitOneComplaintInOneHour
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return false, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return true, nil
 }
 
-// DeleteComplaint удаляет жалобу по её ID.
 func (s *Storage) DeleteComplaint(ctx context.Context, id uuid.UUID) error {
 	const op = "storage.postgres.DeleteComplaintById"
 
@@ -305,7 +290,6 @@ func (s *Storage) DeleteComplaint(ctx context.Context, id uuid.UUID) error {
 func (s *Storage) UpdateComplaint(ctx context.Context, complaintID uuid.UUID, complaint domain.Complaint) (domain.Complaint, error) {
 	const op = "storage.postgres.UpdateComplaint"
 
-	// Проверка существования жалобы
 	var exists bool
 	err := s.db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM complaints WHERE uuid = $1)", complaintID).Scan(&exists)
 	if err != nil {
@@ -315,7 +299,6 @@ func (s *Storage) UpdateComplaint(ctx context.Context, complaintID uuid.UUID, co
 		return domain.Complaint{}, storage.ErrComplaintNotFound
 	}
 
-	// Проверка существования категории
 	var categoryExists bool
 	err = s.db.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM categories WHERE uuid = $1)", complaint.Category.ID).Scan(&categoryExists)
 	if err != nil {
@@ -325,7 +308,6 @@ func (s *Storage) UpdateComplaint(ctx context.Context, complaintID uuid.UUID, co
 		return domain.Complaint{}, fmt.Errorf("category with id %s does not exist", complaint.Category.ID.String())
 	}
 
-	// Обновление записи
 	_, err = s.db.Exec(ctx, `
 		UPDATE complaints
 		SET barcode = $1, category_id = $2, message = $3, status = $4, answer = $5, updated_at = $6
@@ -343,7 +325,6 @@ func (s *Storage) UpdateComplaint(ctx context.Context, complaintID uuid.UUID, co
 		return domain.Complaint{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Получение обновлённой записи вместе с категорией
 	query := `
 		SELECT 
 			c.uuid, c.barcode, c.category_id, c.message, c.status, c.answer, c.created_at, c.updated_at,

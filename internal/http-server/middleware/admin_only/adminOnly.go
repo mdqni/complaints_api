@@ -62,7 +62,7 @@ func AdminOnlyMiddleware(logger *slog.Logger, cfg *config.Config, service *authS
 			}
 			if !isAdmin {
 				logger.Error("User is not admin", slog.String("barcode", claims["barcode"].(string)))
-				http.Error(w, "User is not admin", http.StatusUnauthorized)
+				http.Error(w, "Access denied", http.StatusMethodNotAllowed)
 				return
 			}
 			ctx := context.WithValue(r.Context(), "barcode", claims["barcode"])
