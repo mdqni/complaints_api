@@ -1,9 +1,9 @@
 package getComplaintByComplaintId
 
 import (
-	"complaint_server/internal/lib/api/response"
-	"complaint_server/internal/lib/logger/sl"
 	"complaint_server/internal/service/complaint"
+	"complaint_server/internal/shared/api/response"
+	"complaint_server/internal/shared/logger/sl"
 	"complaint_server/internal/storage"
 	"encoding/json"
 	"errors"
@@ -26,7 +26,7 @@ import (
 // @Failure 404 {object} response.Response "Complaint with the given ID not found"
 // @Failure 500 {object} response.Response "Internal server error"
 // @Router /complaints/{id} [get]
-func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
+func New(log *slog.Logger, service *serviceComplaint.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.get_by_complaint_id.New"
 

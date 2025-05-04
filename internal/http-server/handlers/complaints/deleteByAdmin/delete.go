@@ -1,9 +1,9 @@
 package deleteComplaintByAdmin
 
 import (
-	"complaint_server/internal/lib/api/response"
-	"complaint_server/internal/lib/logger/sl"
 	"complaint_server/internal/service/complaint"
+	"complaint_server/internal/shared/api/response"
+	"complaint_server/internal/shared/logger/sl"
 	"complaint_server/internal/storage"
 	"context"
 	"errors"
@@ -24,7 +24,7 @@ import (
 // @Failure 400 {object} response.Response "Invalid request or complaint not found"
 // @Failure 500 {object} response.Response "Internal server error"
 // @Router /admin/complaints/{id} [delete]
-func New(context context.Context, log *slog.Logger, service *service.ComplaintService, client *redis.Client) http.HandlerFunc {
+func New(context context.Context, log *slog.Logger, service *serviceComplaint.ComplaintService, client *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaint.deleteByAdmin.New"
 		log := log.With(

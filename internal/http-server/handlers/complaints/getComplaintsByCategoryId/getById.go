@@ -1,9 +1,9 @@
 package getComplaintsByCategoryId
 
 import (
-	"complaint_server/internal/lib/api/response"
-	"complaint_server/internal/lib/logger/sl"
 	"complaint_server/internal/service/complaint"
+	"complaint_server/internal/shared/api/response"
+	"complaint_server/internal/shared/logger/sl"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -24,7 +24,7 @@ import (
 // @Failure 404 {object} response.Response "No complaints found for the given category"
 // @Failure 500 {object} response.Response "Internal server error while fetching complaints"
 // @Router /categories/{id}/complaints [get]
-func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
+func New(log *slog.Logger, service *serviceComplaint.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaints.getByCategoryId.New"
 

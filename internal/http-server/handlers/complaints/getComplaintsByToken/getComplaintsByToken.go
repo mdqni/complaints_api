@@ -2,9 +2,9 @@ package getComplaintsByToken
 
 import (
 	"complaint_server/internal/config"
-	"complaint_server/internal/lib/api/response"
-	"complaint_server/internal/lib/jwt"
 	service "complaint_server/internal/service/complaint"
+	"complaint_server/internal/shared/api/response"
+	"complaint_server/internal/shared/jwt"
 	"complaint_server/internal/storage"
 	"encoding/json"
 	"errors"

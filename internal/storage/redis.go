@@ -2,7 +2,7 @@ package storage
 
 import (
 	"complaint_server/internal/config"
-	"complaint_server/internal/lib/logger/sl"
+	"complaint_server/internal/shared/logger/sl"
 	"context"
 	"github.com/redis/go-redis/v9"
 	"log/slog"

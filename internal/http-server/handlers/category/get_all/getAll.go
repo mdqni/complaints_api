@@ -1,9 +1,9 @@
 package categoriesGetAll
 
 import (
-	"complaint_server/internal/lib/api/response"
-	"complaint_server/internal/lib/logger/sl"
 	service "complaint_server/internal/service/category"
+	"complaint_server/internal/shared/api/response"
+	"complaint_server/internal/shared/logger/sl"
 	"encoding/json"
 	"github.com/go-chi/render"
 	"log/slog"

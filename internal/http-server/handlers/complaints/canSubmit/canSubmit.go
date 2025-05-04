@@ -1,8 +1,8 @@
 package canSubmit
 
 import (
-	"complaint_server/internal/lib/api/response"
 	service "complaint_server/internal/service/complaint"
+	"complaint_server/internal/shared/api/response"
 	"complaint_server/internal/storage"
 	"encoding/json"
 	"errors"

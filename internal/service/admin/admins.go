@@ -1,4 +1,4 @@
-package service
+package serviceAdmin
 
 import (
 	"complaint_server/internal/storage/pg"

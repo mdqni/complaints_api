@@ -1,4 +1,4 @@
-package service
+package serviceComplaint
 
 import (
 	"complaint_server/internal/domain"

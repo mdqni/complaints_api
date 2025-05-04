@@ -1,9 +1,9 @@
 package create
 
 import (
-	"complaint_server/internal/lib/api/response"
-	"complaint_server/internal/lib/logger/sl"
 	"complaint_server/internal/service/complaint"
+	"complaint_server/internal/shared/api/response"
+	"complaint_server/internal/shared/logger/sl"
 	"complaint_server/internal/storage"
 	"errors"
 	"github.com/go-chi/chi/v5/middleware"
@@ -33,7 +33,7 @@ type Request struct {
 // @Failure 429 {object} response.Response "Limit of one complaint per hour exceeded"
 // @Failure 500 {object} response.Response "Internal server error"
 // @Router /complaints [post]
-func New(log *slog.Logger, service *service.ComplaintService) http.HandlerFunc {
+func New(log *slog.Logger, service *serviceComplaint.ComplaintService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.complaints.register.New"
 		log = log.With(

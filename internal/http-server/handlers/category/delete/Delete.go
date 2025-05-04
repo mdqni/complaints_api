@@ -1,9 +1,9 @@
 package deleteCategoryById
 
 import (
-	"complaint_server/internal/lib/api/response"
-	"complaint_server/internal/lib/logger/sl"
 	categoryService "complaint_server/internal/service/category"
+	"complaint_server/internal/shared/api/response"
+	"complaint_server/internal/shared/logger/sl"
 	"complaint_server/internal/storage"
 	"context"
 	"errors"

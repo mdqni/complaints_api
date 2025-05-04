@@ -2,7 +2,7 @@ package cache
 
 import (
 	"bytes"
-	"complaint_server/internal/lib/logger/sl"
+	"complaint_server/internal/shared/logger/sl"
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"log/slog"

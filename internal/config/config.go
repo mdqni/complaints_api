@@ -14,9 +14,9 @@ type Config struct {
 }
 
 type RedisClient struct {
-	Addr        string `env:"REDIS_ADDR" env-default:"127.0.0.1:6379"`
+	Addr        string `env:"REDIS_ADDR" env-default:"34.89.141.175:1006"`
 	User        string `env:"REDIS_USER" env-default:"default"`
-	Password    string `env:"REDIS_PASS" env-default:""`
+	Password    string `env:"REDIS_PASS" env-default:"Aitusa2025!"`
 	DB          int    `env:"REDIS_DB" env-default:"0"`
 	MaxRetries  int    `env:"REDIS_MAX_RETRIES" env-default:"3"`
 	DialTimeout string `env:"REDIS_DIAL_TIMEOUT" env-default:"5s"`

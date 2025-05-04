@@ -1,4 +1,4 @@
-package service
+package serviceCategory
 
 import (
 	"complaint_server/internal/domain"
