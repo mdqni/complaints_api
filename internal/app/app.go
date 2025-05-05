@@ -30,8 +30,10 @@ func NewApp(ctx context.Context, cfg *config.Config, log *slog.Logger) (*App, er
 	if err != nil {
 		return nil, err
 	}
+	complaintsRepo := pg.NewComplaintRepo(db)
+	categoryRepo := pg.NewCategoryRepo(db, client)
 
-	complaintsService := serviceComplaint.NewComplaintsService(db)
+	complaintsService := serviceComplaint.NewComplaintsService(complaintsRepo)
 	categoriesService := serviceCategory.NewCategoriesService(db)
 	adminService := serviceAdmin.NewAdminService(db)
 

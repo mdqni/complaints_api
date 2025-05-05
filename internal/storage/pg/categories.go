@@ -1,22 +1,59 @@
 package pg
 
 import (
+	"complaint_server/internal/domain"
+	"complaint_server/internal/repository"
 	"complaint_server/internal/storage"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
-
-	"complaint_server/internal/domain"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
-func (s *Storage) GetCategories(ctx context.Context) ([]domain.Category, error) {
-	const op = "storage.categories.GetCategories"
-	rows, err := s.db.Query(ctx, `
-		SELECT uuid, title, description, answer
-		FROM categories`)
+type categoryRepo struct {
+	db    *pgxpool.Pool
+	redis *redis.Client
+}
+
+func NewCategoryRepo(db *Storage, redis *redis.Client) repository.CategoryRepository {
+	return &categoryRepo{db: db.db, redis: redis}
+}
+
+const (
+	allCategoriesKey = "cache:/categories"
+	categoryKey      = "cache:category:"
+)
+
+func (c *categoryRepo) Create(ctx context.Context, category domain.Category) (uuid.UUID, error) {
+	const op = "storage.categories.CreateCategory"
+	query := `INSERT INTO categories (title, description, answer) VALUES ($1, $2, $3) RETURNING uuid`
+	var categoryID uuid.UUID
+	err := c.db.QueryRow(ctx, query, category.Title, category.Description, category.Answer).Scan(&categoryID)
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	c.redis.Del(ctx, allCategoriesKey)
+
+	return categoryID, nil
+}
+
+func (c *categoryRepo) GetAll(ctx context.Context) ([]domain.Category, error) {
+	const op = "storage.categories.GetAll"
+
+	cached, err := c.redis.Get(ctx, allCategoriesKey).Result()
+	if err == nil {
+		var categories []domain.Category
+		if err := json.Unmarshal([]byte(cached), &categories); err == nil {
+			return categories, nil
+		}
+	}
+
+	rows, err := c.db.Query(ctx, `SELECT uuid, title, description, answer FROM categories`)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -24,32 +61,37 @@ func (s *Storage) GetCategories(ctx context.Context) ([]domain.Category, error) 
 
 	var categories []domain.Category
 	for rows.Next() {
-		var category domain.Category
-		err := rows.Scan(&category.ID, &category.Title, &category.Description, &category.Answer)
-		if err != nil {
+		var cat domain.Category
+		if err := rows.Scan(&cat.ID, &cat.Title, &cat.Description, &cat.Answer); err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
-		categories = append(categories, category)
+		categories = append(categories, cat)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
+	data, _ := json.Marshal(categories)
+	c.redis.Set(ctx, allCategoriesKey, data, 0)
 
 	return categories, nil
 }
-func (s *Storage) GetCategoryById(ctx context.Context, categoryID uuid.UUID) (domain.Category, error) {
-	const op = "storage.categories.GetCategoriesByID"
-	query := `
-		SELECT uuid, title, description, answer
-		FROM categories WHERE uuid = $1`
+
+func (c *categoryRepo) GetByID(ctx context.Context, id uuid.UUID) (domain.Category, error) {
+	const op = "storage.categories.GetByID"
+
+	key := categoryKey + id.String()
+	cached, err := c.redis.Get(ctx, key).Result()
+	if err == nil {
+		var cat domain.Category
+		if err := json.Unmarshal([]byte(cached), &cat); err == nil {
+			return cat, nil
+		}
+	}
+
 	var category domain.Category
-	err := s.db.QueryRow(ctx, query, categoryID).Scan(
-		&category.ID,
-		&category.Title,
-		&category.Description,
-		&category.Answer,
-	)
+	err = c.db.QueryRow(ctx, `
+		SELECT uuid, title, description, answer
+		FROM categories WHERE uuid = $1`,
+		id,
+	).Scan(&category.ID, &category.Title, &category.Description, &category.Answer)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Category{}, storage.ErrCategoryNotFound
@@ -58,69 +100,42 @@ func (s *Storage) GetCategoryById(ctx context.Context, categoryID uuid.UUID) (do
 		return domain.Category{}, fmt.Errorf("%s: %w", op, err)
 	}
 
+	data, _ := json.Marshal(category)
+	c.redis.Set(ctx, key, data, 0)
+
 	return category, nil
 }
-func (s *Storage) CreateCategory(ctx context.Context, category domain.Category) (uuid.UUID, error) {
-	const op = "storage.categories.CreateCategory"
-	query := `INSERT INTO categories (title, description, answer) VALUES ($1, $2, $3) RETURNING uuid`
-	var categoryID uuid.UUID
-	err := s.db.QueryRow(ctx, query, category.Title, category.Description, category.Answer).Scan(&categoryID)
-	if errors.Is(err, sql.ErrNoRows) {
-		return uuid.Nil, storage.ErrCategoryNotFound
-	}
-	if errors.Is(err, sql.ErrConnDone) {
-		return uuid.Nil, storage.ErrDBConnection
-	}
-	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("%s: failed to save categories: %w", op, err)
-	}
 
-	return categoryID, nil
-}
-
-func (s *Storage) CategoryExists(ctx context.Context, name string) (bool, error) {
-	const op = "storage.categories.CategoryExists"
-	query := `SELECT COUNT(1) FROM categories WHERE title = $1`
-	var count int
-	err := s.db.QueryRow(ctx, query, name).Scan(&count)
-	if err != nil {
-		return false, fmt.Errorf("%s: failed to check categories existence: %w", op, err)
-	}
-	return count > 0, nil
-}
-
-func (s *Storage) DeleteCategoryById(ctx context.Context, id uuid.UUID) error {
-	const op = "storage.categories.DeleteCategoryById"
-	query := `DELETE FROM categories WHERE uuid = $1`
-	_, err := s.db.Exec(ctx, query, id)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
-			return storage.ErrHasRelatedRows
-		}
-		return fmt.Errorf("не удалось удалить категорию: %w", err)
-	}
-	return nil
-}
-func (s *Storage) UpdateCategory(ctx context.Context, id uuid.UUID, category domain.Category) (uuid.UUID, error) {
-	const op = "storage.categories.UpdateCategory"
+func (c *categoryRepo) Update(ctx context.Context, id uuid.UUID, category domain.Category) (uuid.UUID, error) {
+	const op = "storage.categories.Update"
 
 	query := `
 		UPDATE categories
-		SET uuid = $1,
-		    title = $2,
-			description = $3,
-			answer = $4
-		WHERE uuid = $5
-	`
-
-	cmdTag, err := s.db.Exec(ctx, query, category.ID, category.Title, category.Description, category.Answer, id)
-	if cmdTag.RowsAffected() == 0 {
-		return uuid.UUID{}, storage.ErrCategoryNotFound
-	}
+		SET title = $1, description = $2, answer = $3
+		WHERE uuid = $4`
+	res, err := c.db.Exec(ctx, query, category.Title, category.Description, category.Answer, id)
 	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("%s: failed to update categories: %w", op, err)
+		return uuid.Nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return category.ID, nil
+	if res.RowsAffected() == 0 {
+		return uuid.Nil, storage.ErrCategoryNotFound
+	}
+
+	c.redis.Del(ctx, allCategoriesKey, categoryKey+id.String())
+
+	return id, nil
+}
+
+func (c *categoryRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	const op = "storage.categories.Delete"
+
+	_, err := c.db.Exec(ctx, `DELETE FROM categories WHERE uuid = $1`, id)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	c.redis.Del(ctx, allCategoriesKey, categoryKey+id.String())
+
+	return nil
 }
