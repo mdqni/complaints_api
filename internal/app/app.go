@@ -30,11 +30,13 @@ func NewApp(ctx context.Context, cfg *config.Config, log *slog.Logger) (*App, er
 	if err != nil {
 		return nil, err
 	}
+
+	cache := redisClient.NewRedisCache(client)
 	complaintsRepo := pg.NewComplaintRepo(db)
 	categoryRepo := pg.NewCategoryRepo(db, client)
 
-	complaintsService := serviceComplaint.NewComplaintsService(complaintsRepo)
-	categoriesService := serviceCategory.NewCategoriesService(categoryRepo)
+	complaintsService := serviceComplaint.NewComplaintsService(complaintsRepo, cache)
+	categoriesService := serviceCategory.NewCategoriesService(categoryRepo, cache)
 	adminService := serviceAdmin.NewAdminService(db)
 
 	httpserver.RegisterRoutes(ctx, cfg, router, log, client, complaintsService, categoriesService, adminService)

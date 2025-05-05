@@ -1,4 +1,4 @@
-package admin_only
+package admin
 
 import (
 	"complaint_server/internal/config"

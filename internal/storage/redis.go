@@ -40,3 +40,29 @@ func NewClient(ctx context.Context, cfg *config.Config, log *slog.Logger) (*redi
 
 	return db, nil
 }
+
+type Cache interface {
+	Delete(ctx context.Context, key string) error
+	Set(ctx context.Context, key string, value any, ttl time.Duration) error
+	Get(ctx context.Context, key string) (string, error)
+}
+
+type RedisCache struct {
+	client *redis.Client
+}
+
+func NewRedisCache(client *redis.Client) *RedisCache {
+	return &RedisCache{client: client}
+}
+
+func (r *RedisCache) Delete(ctx context.Context, key string) error {
+	return r.client.Del(ctx, key).Err()
+}
+
+func (r *RedisCache) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
+	return r.client.Set(ctx, key, value, ttl).Err()
+}
+
+func (r *RedisCache) Get(ctx context.Context, key string) (string, error) {
+	return r.client.Get(ctx, key).Result()
+}

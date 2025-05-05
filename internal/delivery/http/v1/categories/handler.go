@@ -24,7 +24,6 @@ import (
 )
 
 type Handler struct {
-	Ctx              context.Context
 	Log              *slog.Logger
 	AdminService     *serviceAdmin.AdminService
 	CategoryService  *serviceCategory.CategoryService
@@ -40,7 +39,6 @@ func NewHandler(ctx context.Context, complaintsService *serviceComplaint.Complai
 		ComplaintService: complaintsService,
 		Log:              log,
 		Redis:            redis,
-		Ctx:              ctx,
 		Cfg:              cfg,
 	}
 }
@@ -131,7 +129,6 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("categories saved", slog.Any("id", categoryID))
-	h.Redis.Del(h.Ctx, "cache:/categories")
 
 	render.JSON(w, r, response.Response{
 		Message:    "Category created successfully",
@@ -192,11 +189,7 @@ func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(encodedResponse)
-	if err != nil {
-		log.Error(op, sl.Err(err))
-	}
-	log.Info("result: ", result)
+	w.Write(encodedResponse)
 }
 
 // GetById New @Summary Получить категорию по ID
@@ -236,7 +229,7 @@ func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
 			Data:       nil,
 		})
 		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write(responseData)
+		w.Write(responseData)
 		return
 	}
 	if err != nil {
@@ -247,7 +240,7 @@ func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
 			Data:       nil,
 		})
 		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write(responseData)
+		w.Write(responseData)
 		return
 	}
 
@@ -258,7 +251,7 @@ func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
 		Data:       result,
 	})
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(responseData)
+	w.Write(responseData)
 }
 
 // GetCategoryComplaints New GetComplaintsByCategoryId godoc
@@ -290,14 +283,14 @@ func (h *Handler) GetCategoryComplaints(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	_uuid, err := uuid.Parse(id)
+	categoryUUID, err := uuid.Parse(id)
 	if err != nil {
 		log.Error(op, sl.Err(err))
 		render.JSON(w, r, response.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
 		return
 	}
 
-	result, err := h.ComplaintService.GetComplaintsByCategoryId(r.Context(), _uuid)
+	result, err := h.ComplaintService.GetComplaintsByCategoryId(r.Context(), categoryUUID)
 	if err != nil {
 		log.Error("failed to get complaints", sl.Err(err))
 		responseData, _ := json.Marshal(response.Response{
@@ -306,18 +299,18 @@ func (h *Handler) GetCategoryComplaints(w http.ResponseWriter, r *http.Request) 
 			Data:       nil,
 		})
 		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write(responseData)
+		w.Write(responseData)
 		return
 	}
 
-	log.Info("Complaints found for categories", slog.Any("category_id", _uuid))
+	log.Info("Complaints found for categories", slog.Any("category_id", categoryUUID))
 	responseData, _ := json.Marshal(response.Response{
 		Message:    "Complaints fetched successfully",
 		StatusCode: http.StatusOK,
 		Data:       result,
 	})
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(responseData)
+	w.Write(responseData)
 
 }
 
@@ -395,7 +388,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 			Data:       nil,
 		})
 		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write(responseData)
+		w.Write(responseData)
 		return
 	}
 	if err != nil {
@@ -407,8 +400,6 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
-	h.Redis.Del(h.Ctx, "cache:/categories")
 
 	render.JSON(w, r, response.Response{
 		Message:    "Category updated successfully",
@@ -459,6 +450,5 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Info("categories deleted")
-	h.Redis.Del(h.Ctx, "cache:/categories")
 	render.JSON(w, r, response.Response{StatusCode: http.StatusOK})
 }

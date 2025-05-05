@@ -28,7 +28,6 @@ import (
 )
 
 type Handler struct {
-	Ctx              context.Context
 	Log              *slog.Logger
 	AdminService     *serviceAdmin.AdminService
 	CategoryService  *serviceCategory.CategoryService
@@ -44,7 +43,6 @@ func NewHandler(ctx context.Context, complaintsService *serviceComplaint.Complai
 		ComplaintService: complaintsService,
 		Log:              log,
 		Redis:            redis,
-		Ctx:              ctx,
 	}
 }
 
@@ -79,7 +77,7 @@ func (h Handler) GetAll(w http.ResponseWriter, r *http.Request) {
 			Message:    storage.ErrComplaintNotFound.Error(),
 		})
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(responseData)
+		w.Write(responseData)
 		return
 	}
 	if err != nil {
@@ -90,7 +88,7 @@ func (h Handler) GetAll(w http.ResponseWriter, r *http.Request) {
 			Message:    "internal error",
 		})
 		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write(responseData)
+		w.Write(responseData)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -98,7 +96,7 @@ func (h Handler) GetAll(w http.ResponseWriter, r *http.Request) {
 		StatusCode: http.StatusOK,
 		Data:       result,
 	})
-	_, _ = w.Write(responseData)
+	w.Write(responseData)
 }
 
 // Create New CreateComplaint godoc
@@ -215,12 +213,12 @@ func (h Handler) GetByComplaintId(w http.ResponseWriter, r *http.Request) {
 		render.JSON(w, r, response.Response{StatusCode: http.StatusBadRequest, Message: "Missing complaint_id"})
 		return
 	}
-	_uuid, err := uuid.Parse(id)
+	complaintUUID, err := uuid.Parse(id)
 	if err != nil {
 		log.Error("Invalid complaint_id")
 		render.JSON(w, r, response.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
 	}
-	result, err := h.ComplaintService.GetComplaintByUUID(r.Context(), _uuid)
+	result, err := h.ComplaintService.GetComplaintByUUID(r.Context(), complaintUUID)
 	if errors.Is(err, storage.ErrComplaintNotFound) {
 		log.Error("complaint not found", sl.Err(err))
 		render.JSON(w, r, response.Error("complaint with this id not found", http.StatusNotFound))
@@ -240,7 +238,7 @@ func (h Handler) GetByComplaintId(w http.ResponseWriter, r *http.Request) {
 		StatusCode: http.StatusOK,
 		Data:       result,
 	})
-	_, _ = w.Write(responseData)
+	w.Write(responseData)
 }
 
 // CanSubmit New godoc
@@ -277,7 +275,7 @@ func (h Handler) CanSubmit(w http.ResponseWriter, r *http.Request) {
 			StatusCode: http.StatusTooManyRequests,
 			Data:       map[string]interface{}{"canSubmit": false},
 		})
-		_, _ = w.Write(responseData)
+		w.Write(responseData)
 		return
 
 	}
@@ -285,7 +283,7 @@ func (h Handler) CanSubmit(w http.ResponseWriter, r *http.Request) {
 		StatusCode: http.StatusOK,
 		Data:       map[string]interface{}{"canSubmit": canSubmit},
 	})
-	_, _ = w.Write(responseData)
+	w.Write(responseData)
 	return
 }
 
@@ -353,7 +351,7 @@ func (h Handler) GetComplaintsByToken(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(responseData)
+	w.Write(responseData)
 }
 
 // DeleteByOwner @Summary Delete a complaint
@@ -466,8 +464,6 @@ func (h Handler) DeleteByOwner(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Info("complaint successfully deleted")
 
-	h.Redis.Del(h.Ctx, fmt.Sprintf("cache:/complaints/%s", id))
-	h.Redis.Del(h.Ctx, fmt.Sprintf("cache:/complaints"))
 	render.JSON(w, r, response.Response{
 		Message:    "Complaint successfully deleted",
 		StatusCode: http.StatusOK,
@@ -533,11 +529,6 @@ func (h Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("complaint updated", slog.Any("id", id))
-	err = h.Redis.Del(ctx, "cache:/complaints").Err()
-	if err != nil {
-		log.Error("failed to deleteByAdmin cache", sl.Err(err))
-	}
-	h.Redis.Del(h.Ctx, fmt.Sprintf("cache:/complaints/%d", req.Complaint.ID))
 	render.JSON(w, r,
 		response.Response{Message: complaintID, StatusCode: http.StatusOK, Data: complaint},
 	)
@@ -568,7 +559,7 @@ func (h Handler) DeleteByAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_uuid, err := uuid.Parse(id)
+	complaintUUID, err := uuid.Parse(id)
 	if err != nil {
 		log.Error("invalid complaint ID format", sl.Err(err))
 		render.JSON(w, r, response.Response{
@@ -579,7 +570,7 @@ func (h Handler) DeleteByAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	err = h.ComplaintService.DeleteComplaintById(ctx, _uuid)
+	err = h.ComplaintService.DeleteComplaintById(ctx, complaintUUID)
 	if errors.Is(err, storage.ErrComplaintNotFound) {
 		log.Error("complaint not found", sl.Err(err))
 		render.JSON(w, r, response.Response{
@@ -601,7 +592,6 @@ func (h Handler) DeleteByAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info("complaint successfully deleted")
-	h.Redis.Del(h.Ctx, fmt.Sprintf("cache:/complaints"))
 
 	render.JSON(w, r, response.Response{
 		Message:    "Complaint successfully deleted",
