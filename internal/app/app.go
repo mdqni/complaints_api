@@ -34,7 +34,7 @@ func NewApp(ctx context.Context, cfg *config.Config, log *slog.Logger) (*App, er
 	categoryRepo := pg.NewCategoryRepo(db, client)
 
 	complaintsService := serviceComplaint.NewComplaintsService(complaintsRepo)
-	categoriesService := serviceCategory.NewCategoriesService(db)
+	categoriesService := serviceCategory.NewCategoriesService(categoryRepo)
 	adminService := serviceAdmin.NewAdminService(db)
 
 	httpserver.RegisterRoutes(ctx, cfg, router, log, client, complaintsService, categoriesService, adminService)
