@@ -22,7 +22,7 @@ func (s *Storage) SaveComplaint(ctx context.Context, barcode int, categoryID uui
 	var answer string
 	err = s.db.QueryRow(ctx, `SELECT answer FROM categories WHERE uuid = $1`, categoryID).Scan(&answer)
 	if err != nil {
-		return uuid.UUID{}, "", fmt.Errorf("failed to get category answer: %w", err)
+		return uuid.UUID{}, "", fmt.Errorf("failed to get categories answer: %w", err)
 	}
 
 	return complaintID, answer, nil
@@ -305,7 +305,7 @@ func (s *Storage) UpdateComplaint(ctx context.Context, complaintID uuid.UUID, co
 		return domain.Complaint{}, fmt.Errorf("%s: %w", op, err)
 	}
 	if !categoryExists {
-		return domain.Complaint{}, fmt.Errorf("category with id %s does not exist", complaint.Category.ID.String())
+		return domain.Complaint{}, fmt.Errorf("categories with id %s does not exist", complaint.Category.ID.String())
 	}
 
 	_, err = s.db.Exec(ctx, `

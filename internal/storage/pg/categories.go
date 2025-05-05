@@ -13,7 +13,7 @@ import (
 )
 
 func (s *Storage) GetCategories(ctx context.Context) ([]domain.Category, error) {
-	const op = "storage.category.GetCategories"
+	const op = "storage.categories.GetCategories"
 	rows, err := s.db.Query(ctx, `
 		SELECT uuid, title, description, answer
 		FROM categories`)
@@ -39,7 +39,7 @@ func (s *Storage) GetCategories(ctx context.Context) ([]domain.Category, error) 
 	return categories, nil
 }
 func (s *Storage) GetCategoryById(ctx context.Context, categoryID uuid.UUID) (domain.Category, error) {
-	const op = "storage.category.GetCategoriesByID"
+	const op = "storage.categories.GetCategoriesByID"
 	query := `
 		SELECT uuid, title, description, answer
 		FROM categories WHERE uuid = $1`
@@ -61,7 +61,7 @@ func (s *Storage) GetCategoryById(ctx context.Context, categoryID uuid.UUID) (do
 	return category, nil
 }
 func (s *Storage) CreateCategory(ctx context.Context, category domain.Category) (uuid.UUID, error) {
-	const op = "storage.category.CreateCategory"
+	const op = "storage.categories.CreateCategory"
 	query := `INSERT INTO categories (title, description, answer) VALUES ($1, $2, $3) RETURNING uuid`
 	var categoryID uuid.UUID
 	err := s.db.QueryRow(ctx, query, category.Title, category.Description, category.Answer).Scan(&categoryID)
@@ -72,25 +72,25 @@ func (s *Storage) CreateCategory(ctx context.Context, category domain.Category) 
 		return uuid.Nil, storage.ErrDBConnection
 	}
 	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("%s: failed to save category: %w", op, err)
+		return uuid.UUID{}, fmt.Errorf("%s: failed to save categories: %w", op, err)
 	}
 
 	return categoryID, nil
 }
 
 func (s *Storage) CategoryExists(ctx context.Context, name string) (bool, error) {
-	const op = "storage.category.CategoryExists"
+	const op = "storage.categories.CategoryExists"
 	query := `SELECT COUNT(1) FROM categories WHERE title = $1`
 	var count int
 	err := s.db.QueryRow(ctx, query, name).Scan(&count)
 	if err != nil {
-		return false, fmt.Errorf("%s: failed to check category existence: %w", op, err)
+		return false, fmt.Errorf("%s: failed to check categories existence: %w", op, err)
 	}
 	return count > 0, nil
 }
 
 func (s *Storage) DeleteCategoryById(ctx context.Context, id uuid.UUID) error {
-	const op = "storage.category.DeleteCategoryById"
+	const op = "storage.categories.DeleteCategoryById"
 	query := `DELETE FROM categories WHERE uuid = $1`
 	_, err := s.db.Exec(ctx, query, id)
 	if err != nil {
@@ -103,7 +103,7 @@ func (s *Storage) DeleteCategoryById(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 func (s *Storage) UpdateCategory(ctx context.Context, id uuid.UUID, category domain.Category) (uuid.UUID, error) {
-	const op = "storage.category.UpdateCategory"
+	const op = "storage.categories.UpdateCategory"
 
 	query := `
 		UPDATE categories
@@ -119,7 +119,7 @@ func (s *Storage) UpdateCategory(ctx context.Context, id uuid.UUID, category dom
 		return uuid.UUID{}, storage.ErrCategoryNotFound
 	}
 	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("%s: failed to update category: %w", op, err)
+		return uuid.UUID{}, fmt.Errorf("%s: failed to update categories: %w", op, err)
 	}
 
 	return category.ID, nil

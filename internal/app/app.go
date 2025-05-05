@@ -20,6 +20,8 @@ type App struct {
 }
 
 func NewApp(ctx context.Context, cfg *config.Config, log *slog.Logger) (*App, error) {
+	router := chi.NewRouter()
+
 	db, err := pg.New(cfg.ConnString)
 	if err != nil {
 		return nil, err
@@ -33,7 +35,6 @@ func NewApp(ctx context.Context, cfg *config.Config, log *slog.Logger) (*App, er
 	categoriesService := serviceCategory.NewCategoriesService(db)
 	adminService := serviceAdmin.NewAdminService(db)
 
-	router := chi.NewRouter()
 	httpserver.RegisterRoutes(ctx, cfg, router, log, client, complaintsService, categoriesService, adminService)
 
 	readTimeout, err := time.ParseDuration(cfg.HTTPServer.Timeout)

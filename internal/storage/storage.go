@@ -3,11 +3,11 @@ package storage
 import "errors"
 
 var (
-	ErrCategoryNotFound = errors.New("category not found")
+	ErrCategoryNotFound = errors.New("categories not found")
 	ErrHasRelatedRows   = errors.New("there are related rows")
-	ErrCreateCategory   = errors.New("failed to create category")
+	ErrCreateCategory   = errors.New("failed to create categories")
 	//----------------------
-	ErrCreateComplaint            = errors.New("failed to create category")
+	ErrCreateComplaint            = errors.New("failed to create categories")
 	ErrLimitOneComplaintInOneHour = errors.New("there are limit one complaint in one hour")
 	ErrComplaintNotFound          = errors.New("complaints not found")
 	//----------------------

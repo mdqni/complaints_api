@@ -30,7 +30,7 @@ definitions:
       answer:
         type: string
       description:
-        description: Detailed description of the category
+        description: Detailed description of the categories
         type: string
       id:
         type: string
@@ -285,7 +285,7 @@ paths:
       - application/json
       description: Возвращает категорию по уникальному идентификатору (ID).
       parameters:
-      - description: Category ID (unique identifier of the category)
+      - description: Category ID (unique identifier of the categories)
         in: path
         name: id
         required: true
@@ -302,7 +302,7 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
         "500":
-          description: Internal server error while fetching the category
+          description: Internal server error while fetching the categories
           schema:
             $ref: '#/definitions/response.Response'
       tags:
@@ -311,10 +311,10 @@ paths:
     get:
       consumes:
       - application/json
-      description: Retrieve all complaints that belong to a specific category based
+      description: Retrieve all complaints that belong to a specific categories based
         on its unique identifier (Category ID).
       parameters:
-      - description: Category UUID (unique identifier of the category)
+      - description: Category UUID (unique identifier of the categories)
         in: path
         name: id
         required: true
@@ -323,24 +323,24 @@ paths:
       - application/json
       responses:
         "200":
-          description: List of complaints associated with the given category
+          description: List of complaints associated with the given categories
           schema:
             items:
               $ref: '#/definitions/domain.Complaint'
             type: array
         "400":
-          description: Invalid category ID format
+          description: Invalid categories ID format
           schema:
             $ref: '#/definitions/response.Response'
         "404":
-          description: No complaints found for the given category
+          description: No complaints found for the given categories
           schema:
             $ref: '#/definitions/response.Response'
         "500":
           description: Internal server error while fetching complaints
           schema:
             $ref: '#/definitions/response.Response'
-      summary: Get complaints by category UUID
+      summary: Get complaints by categories UUID
       tags:
       - Complaints
   /complaints:
@@ -380,7 +380,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new complaint for a specific user and category. Only one
+      description: Create a new complaint for a specific user and categories. Only one
         complaint can be submitted per hour for the same user.
       parameters:
       - description: Complaint details

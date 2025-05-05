@@ -298,7 +298,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Category ID (unique identifier of the category)",
+                        "description": "Category ID (unique identifier of the categories)",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -318,7 +318,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Internal server error while fetching the category",
+                        "description": "Internal server error while fetching the categories",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -328,7 +328,7 @@ const docTemplate = `{
         },
         "/categories/{id}/complaints": {
             "get": {
-                "description": "Retrieve all complaints that belong to a specific category based on its unique identifier (Category ID).",
+                "description": "Retrieve all complaints that belong to a specific categories based on its unique identifier (Category ID).",
                 "consumes": [
                     "application/json"
                 ],
@@ -338,11 +338,11 @@ const docTemplate = `{
                 "tags": [
                     "Complaints"
                 ],
-                "summary": "Get complaints by category UUID",
+                "summary": "Get complaints by categories UUID",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Category UUID (unique identifier of the category)",
+                        "description": "Category UUID (unique identifier of the categories)",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -350,7 +350,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "List of complaints associated with the given category",
+                        "description": "List of complaints associated with the given categories",
                         "schema": {
                             "type": "array",
                             "items": {
@@ -359,13 +359,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid category ID format",
+                        "description": "Invalid categories ID format",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
-                        "description": "No complaints found for the given category",
+                        "description": "No complaints found for the given categories",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -429,7 +429,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Create a new complaint for a specific user and category. Only one complaint can be submitted per hour for the same user.",
+                "description": "Create a new complaint for a specific user and categories. Only one complaint can be submitted per hour for the same user.",
                 "consumes": [
                     "application/json"
                 ],
@@ -704,7 +704,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "description": {
-                    "description": "Detailed description of the category",
+                    "description": "Detailed description of the categories",
                     "type": "string"
                 },
                 "id": {
@@ -726,7 +726,7 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 242590
                 },
-                "category": {
+                "categories": {
                     "$ref": "#/definitions/domain.Category"
                 },
                 "created_at": {
